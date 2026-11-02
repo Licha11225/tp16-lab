@@ -1,13 +1,13 @@
 package daoimpl;
 
-import config.ConexionBD;
-import dao.clubDAO;
-import model.club; // Importado en minúscula según la estructura de tu proyecto
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.ResultSet; // Importado en minúscula según la estructura de tu proyecto
 import java.sql.SQLException;
+
+import config.ConexionBD;
+import dao.clubDAO;
+import model.club;
 
 public class clubdaoimpl implements clubDAO {
 

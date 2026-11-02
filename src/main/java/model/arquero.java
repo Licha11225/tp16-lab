@@ -5,8 +5,8 @@ public class arquero extends jugador {
 
   
 
-    public arquero(int id, String nombre, int clubId, boolean juegaAdelantado) {
-        super(id, nombre, clubId);
+    public arquero(int id, String nombre, String apellido, int clubId, boolean juegaAdelantado) {
+        super(id, nombre, apellido, clubId);
         this.juegaAdelantado = juegaAdelantado;
     }
 

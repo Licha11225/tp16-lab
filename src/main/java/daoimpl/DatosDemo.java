@@ -10,7 +10,6 @@ import model.mediocampista;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Datos de demostración (6 clubes x 11 jugadores) para jugar sin base de datos. */
 public final class DatosDemo {
 
     private static final String[] CLUBES = {
@@ -35,23 +34,26 @@ public final class DatosDemo {
         return lista;
     }
 
-    /** Por club: 1 arquero, 4 defensores, 3 mediocampistas y 3 delanteros. */
     public static List<jugador> jugadores() {
         List<jugador> lista = new ArrayList<>();
         for (int c = 0; c < CLUBES.length; c++) {
             for (int k = 0; k < 11; k++) {
                 int n = c * 11 + k;
                 int id = n + 1;
-                String nombre = NOMBRES[n % NOMBRES.length] + " " + APELLIDOS[n % APELLIDOS.length];
+                
+                String nombre = NOMBRES[n % NOMBRES.length];
+                String apellido = APELLIDOS[n % APELLIDOS.length];
+                
                 int clubId = c + 1;
+                
                 if (k == 0) {
-                    lista.add(new arquero(id, nombre, clubId, n % 3 == 0));
+                    lista.add(new arquero(id, nombre, apellido, clubId, n % 3 == 0));
                 } else if (k <= 4) {
-                    lista.add(new defensor(id, nombre, clubId, k == 2 || k == 3));
+                    lista.add(new defensor(id, nombre, apellido, clubId, k == 2 || k == 3));
                 } else if (k <= 7) {
-                    lista.add(new mediocampista(id, nombre, clubId, k == 5));
+                    lista.add(new mediocampista(id, nombre, apellido, clubId, k == 5));
                 } else {
-                    lista.add(new delantero(id, nombre, clubId, k == 9));
+                    lista.add(new delantero(id, nombre, apellido, clubId, k == 9));
                 }
             }
         }

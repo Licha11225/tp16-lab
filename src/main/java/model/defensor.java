@@ -5,9 +5,10 @@ public class defensor extends jugador {
 
     
 
-    public defensor(int id, String nombre, int clubId, boolean esZagueroCentral) {
-        super(id, nombre, clubId);
+    public defensor(int id, String nombre, String apellido, int clubId, boolean esZagueroCentral) {
+        super(id, nombre, apellido, clubId);
         this.esZagueroCentral = esZagueroCentral;
+
     }
 
     public boolean getEsZagueroCentral() {

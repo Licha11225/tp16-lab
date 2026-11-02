@@ -1,6 +1,19 @@
 package main;
 
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.sql.Connection;
+import java.sql.DriverManager;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+
 import com.formdev.flatlaf.FlatDarkLaf;
+
 import config.ConexionBD;
 import dao.clubDAO;
 import dao.jugadorDAO;
@@ -13,15 +26,6 @@ import daoimpl.onceidealdaoimpl;
 import daoimpl.onceidealdaomemoria;
 import service.juegoservice;
 import ui.VentanaPrincipal;
-
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-import java.awt.Font;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import com.formdev.flatlaf.FlatDarkLaf;
-import javax.swing.*;
-import java.awt.*;
 
 public class Main {
 

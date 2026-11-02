@@ -1,18 +1,18 @@
-    package daoimpl;
+package daoimpl;
 
-    import config.ConexionBD;
-    import dao.jugadorDAO;
-    import model.*;
+import config.ConexionBD;
+import dao.jugadorDAO;
+import model.*;
 
-    import java.sql.*;
-    import java.util.ArrayList;
-    import java.util.List;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
-    public class jugadordaoimpl implements jugadorDAO {
+public class jugadordaoimpl implements jugadorDAO {
 
     @Override
     public void insertar(jugador jugador) throws SQLException {
-        String sql = "INSERT INTO jugador (nombre, club_id, posicion, juega_adelantado, es_zaguero_central, es_5, es_9) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO jugador (nombre, apellido, club_id, posicion, juega_adelantado, es_zaguero_central, es_5, es_9) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         String posicion = "";
         boolean juegaAdelantado = false;
@@ -38,12 +38,13 @@
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             ps.setString(1, jugador.getNombre());
-            ps.setInt(2, jugador.getClubId());
-            ps.setString(3, posicion);
-            ps.setBoolean(4, juegaAdelantado);
-            ps.setBoolean(5, esZagueroCentral);
-            ps.setBoolean(6, es5);
-            ps.setBoolean(7, es9);
+            ps.setString(2, jugador.getApellido());
+            ps.setInt(3, jugador.getClubId());
+            ps.setString(4, posicion);
+            ps.setBoolean(5, juegaAdelantado);
+            ps.setBoolean(6, esZagueroCentral);
+            ps.setBoolean(7, es5);
+            ps.setBoolean(8, es9);
 
             ps.executeUpdate();
 
@@ -55,7 +56,7 @@
         }
     }
 
-        @Override
+    @Override
     public jugador buscarPorId(int id) throws SQLException {
         String sql = "SELECT j.*, jp.posicion FROM jugador j LEFT JOIN jugador_posicion jp ON j.id = jp.jugador_id WHERE j.id = ?";
         
@@ -107,9 +108,10 @@
         return lista;
     }
 
-        private jugador mapearJugador(ResultSet rs) throws SQLException {
+    private jugador mapearJugador(ResultSet rs) throws SQLException {
         int id = rs.getInt("id");
         String nombre = rs.getString("nombre");
+        String apellido = rs.getString("apellido");
         int clubId = rs.getInt("club_id");
         String posicion = rs.getString("posicion");
         
@@ -127,7 +129,7 @@
         switch (posicion) {
             case "GK":
             case "ARQUERO":
-                return new arquero(id, nombre, clubId, juegaAdelantado);
+                return new arquero(id, nombre, apellido, clubId, juegaAdelantado);
                 
             case "CB":
             case "LB":
@@ -135,7 +137,7 @@
             case "LWB":
             case "RWB":
             case "DEFENSOR":
-                return new defensor(id, nombre, clubId, esZagueroCentral);
+                return new defensor(id, nombre, apellido, clubId, esZagueroCentral);
                 
             case "MC":
             case "MCD":
@@ -143,17 +145,17 @@
             case "LM":
             case "RM":
             case "MEDIOCAMPISTA":
-                return new mediocampista(id, nombre, clubId, es5);
+                return new mediocampista(id, nombre, apellido, clubId, es5);
                 
             case "ST":
             case "LW":
             case "RW":
             case "CF":
             case "DELANTERO":
-                return new delantero(id, nombre, clubId, es9);
+                return new delantero(id, nombre, apellido, clubId, es9);
                 
             default:
                 throw new IllegalArgumentException("Posición desconocida en BDD: " + posicion);
         }
     }
-    }
+}

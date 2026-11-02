@@ -1,15 +1,12 @@
 package ui;
 
-import arcade.Formacion;
-import arcade.Ratings;
-import exception.ClubIncorrectoException;
-import exception.EntradaVaciaException;
-import exception.JugadorDuplicadoException;
-import exception.PosicionInvalidaException;
-import model.club;
-import model.jugador;
-import model.onceideal;
-import service.juegoservice;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -23,13 +20,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+
+import arcade.Formacion;
+import arcade.Ratings;
+import exception.ClubIncorrectoException;
+import exception.EntradaVaciaException;
+import exception.JugadorDuplicadoException;
+import exception.PosicionInvalidaException;
+import model.club;
+import model.jugador;
+import model.onceideal;
+import service.juegoservice;
 
 /** Paso 1: armar el 11. En cada turno sale un club al azar y hay que elegir un jugador válido para la posición. */
 public class PanelArmar11 extends JPanel {
@@ -77,7 +78,9 @@ public class PanelArmar11 extends JPanel {
                                                           boolean sel, boolean foc) {
                 super.getListCellRendererComponent(l, val, i, sel, foc);
                 if (val instanceof jugador j) {
-                setText(j.getNombre() + "   ·   " + Ratings.posicion(j) + "   ·   OVR " + Ratings.de(j));                }
+                    // Modificado para mostrar el apellido en lugar del nombre
+                    setText(j.getApellido() + "   ·   " + Ratings.posicion(j) + "   ·   OVR " + Ratings.de(j));
+                }
                 setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
                 return this;
             }
@@ -179,11 +182,14 @@ public class PanelArmar11 extends JPanel {
                 throw new EntradaVaciaException("Elegí un jugador de la lista.");
             }
             service.agregarJugadorAOnce(once, elegido, clubTurno, Formacion.CASILLEROS[turno]);
-            cancha.setNombre(turno, Ratings.apellido(elegido.getNombre()));
+            
+            // Modificado para usar directamente el atributo getApellido() en la cancha
+            cancha.setNombre(turno, elegido.getApellido());
+            
             turno++;
             siguienteTurno();
         } catch (EntradaVaciaException | ClubIncorrectoException | JugadorDuplicadoException
-                 | PosicionInvalidaException ex) {
+                     | PosicionInvalidaException ex) {
             lblError.setText("<html>" + ex.getMessage() + "</html>");
         } catch (Exception ex) {
             lblError.setText("<html>Error inesperado: " + ex.getMessage() + "</html>");

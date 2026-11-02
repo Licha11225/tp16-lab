@@ -5,8 +5,8 @@ public class mediocampista extends jugador {
 
  
 
-    public mediocampista(int id, String nombre, int clubId, boolean es5) {
-        super(id, nombre, clubId);
+    public mediocampista(int id, String nombre, String apellido, int clubId, boolean es5) {
+        super(id, nombre, apellido, clubId);
         this.es5 = es5;
     }
 
