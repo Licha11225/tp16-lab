@@ -30,7 +30,7 @@ public final class Ratings {
         return Math.min(95, base + (rasgo ? 3 : 0));
     }
 
-    public static String tipo(jugador j) {
+    public static String posicion(jugador j) {
         if (j instanceof arquero) return "Arquero";
         if (j instanceof defensor) return "Defensor";
         if (j instanceof mediocampista) return "Mediocampista";

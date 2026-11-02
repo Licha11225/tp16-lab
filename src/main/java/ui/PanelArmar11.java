@@ -77,8 +77,7 @@ public class PanelArmar11 extends JPanel {
                                                           boolean sel, boolean foc) {
                 super.getListCellRendererComponent(l, val, i, sel, foc);
                 if (val instanceof jugador j) {
-                    setText(j.getNombre() + "   ·   " + Ratings.tipo(j) + "   ·   OVR " + Ratings.de(j));
-                }
+                setText(j.getNombre() + "   ·   " + Ratings.posicion(j) + "   ·   OVR " + Ratings.de(j));                }
                 setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
                 return this;
             }
