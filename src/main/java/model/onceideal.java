@@ -12,13 +12,10 @@ public class onceideal {
     public onceideal() {
     }
 
-    // Constructor con parámetros
     public onceideal(String nombreUsuario, List<jugador> listaJugadores) {
         this.nombreUsuario = nombreUsuario;
         this.listaJugadores = listaJugadores != null ? listaJugadores : new ArrayList<>();
     }
-
-    // --- Getters y Setters necesarios para que el DAO funcione ---
 
     public int getId() {
         return id;

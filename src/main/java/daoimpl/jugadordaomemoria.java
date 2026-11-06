@@ -1,10 +1,10 @@
 package daoimpl;
 
-import dao.jugadorDAO;
-import model.jugador;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import dao.jugadorDAO;
+import model.jugador;
 
 public class jugadordaomemoria implements jugadorDAO {
 
@@ -35,5 +35,23 @@ public class jugadordaomemoria implements jugadorDAO {
             if (j.getNombre().equalsIgnoreCase(nombre.trim())) return j;
         }
         return null;
+    }
+    @Override
+    public List<jugador> obtenerJugadoresUnicos() {
+        // Retornamos la lista en memoria asegurando que no se repitan por ID
+        List<jugador> unicos = new ArrayList<>();
+        for (jugador j : jugadores) {
+            boolean encontrado = false;
+            for (jugador u : unicos) {
+                if (u.getId() == j.getId()) {
+                    encontrado = true;
+                    break;
+                }
+            }
+            if (!encontrado) {
+                unicos.add(j);
+            }
+        }
+        return unicos;
     }
 }

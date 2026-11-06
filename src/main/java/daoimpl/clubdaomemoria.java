@@ -1,10 +1,10 @@
 package daoimpl;
 
-import dao.clubDAO;
-import model.club;
-
 import java.util.List;
 import java.util.Random;
+
+import dao.clubDAO;
+import model.club;
 
 public class clubdaomemoria implements clubDAO {
 

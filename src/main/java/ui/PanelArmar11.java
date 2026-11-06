@@ -5,8 +5,13 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.ItemEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -14,11 +19,13 @@ import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 
 import arcade.Formacion;
@@ -32,7 +39,7 @@ import model.jugador;
 import model.onceideal;
 import service.juegoservice;
 
-/** Paso 1: armar el 11. En cada turno sale un club al azar y hay que elegir un jugador válido para la posición. */
+/** Paso 1: armar el 11 de forma libre. En cada turno sale un club al azar y eliges la posición que quieras llenar. */
 public class PanelArmar11 extends JPanel {
 
     private final VentanaPrincipal v;
@@ -40,9 +47,12 @@ public class PanelArmar11 extends JPanel {
 
     private final CanchaPanel cancha = new CanchaPanel();
     private final JLabel lblTurno = new JLabel();
-    private final JLabel lblPosicion = new JLabel();
     private final JLabel lblClub = new JLabel();
     private final JLabel lblError = new JLabel(" ");
+    
+    private final JTextField txtBuscarJugador = new JTextField();
+    private final JComboBox<String> comboPosicionesLibres;
+    
     private final DefaultListModel<jugador> modelo = new DefaultListModel<>();
     private final JList<jugador> lista = new JList<>(modelo);
     private final JButton btnAlinear = new JButton("Alinear jugador");
@@ -50,7 +60,9 @@ public class PanelArmar11 extends JPanel {
 
     private onceideal once;
     private club clubTurno;
-    private int turno;
+    private int jugadoresAlineadosCount = 0;
+    private final boolean[] casillerosOcupados = new boolean[11];
+    private List<jugador> jugadoresDelClubActual = new ArrayList<>();
 
     public PanelArmar11(VentanaPrincipal v, juegoservice service) {
         this.v = v;
@@ -62,14 +74,23 @@ public class PanelArmar11 extends JPanel {
 
         JPanel lateral = new JPanel();
         lateral.setLayout(new BoxLayout(lateral, BoxLayout.Y_AXIS));
-        lateral.setPreferredSize(new Dimension(330, 400));
+        lateral.setPreferredSize(new Dimension(330, 500));
 
         lblTurno.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         lblTurno.setForeground(Color.GRAY);
-        lblPosicion.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
         lblClub.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
         lblClub.setForeground(new Color(0x56ccf2));
         lblError.setForeground(new Color(0xff6b6b));
+
+        // Selector libre con las 11 posiciones tácticas de la formación
+        comboPosicionesLibres = new JComboBox<>(Formacion.ETIQUETAS);
+        comboPosicionesLibres.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        comboPosicionesLibres.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                int idx = comboPosicionesLibres.getSelectedIndex();
+                cancha.setResaltado(idx); // Resalta en la cancha la posición seleccionada
+            }
+        });
 
         lista.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         lista.setCellRenderer(new DefaultListCellRenderer() {
@@ -78,7 +99,6 @@ public class PanelArmar11 extends JPanel {
                                                           boolean sel, boolean foc) {
                 super.getListCellRendererComponent(l, val, i, sel, foc);
                 if (val instanceof jugador j) {
-                    // Modificado para mostrar el apellido en lugar del nombre
                     setText(j.getApellido() + "   ·   " + Ratings.posicion(j) + "   ·   OVR " + Ratings.de(j));
                 }
                 setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
@@ -94,6 +114,14 @@ public class PanelArmar11 extends JPanel {
         JScrollPane scroll = new JScrollPane(lista);
         scroll.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        txtBuscarJugador.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        txtBuscarJugador.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                filtrarJugadoresPorTexto();
+            }
+        });
+
         btnAlinear.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
         btnAlinear.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         btnAlinear.addActionListener(e -> alinear());
@@ -105,19 +133,25 @@ public class PanelArmar11 extends JPanel {
         btnPartido.setVisible(false);
         btnPartido.addActionListener(e -> irAlPartido());
 
-        for (JLabel l : new JLabel[]{lblTurno, lblPosicion, lblClub, lblError}) {
+        for (JLabel l : new JLabel[]{lblTurno, lblClub, lblError}) {
             l.setAlignmentX(Component.LEFT_ALIGNMENT);
         }
         btnAlinear.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnPartido.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lateral.add(lblTurno);
-        lateral.add(Box.createVerticalStrut(4));
-        lateral.add(lblPosicion);
         lateral.add(Box.createVerticalStrut(8));
         lateral.add(new JLabel("Club sorteado:"));
         lateral.add(lblClub);
-        lateral.add(Box.createVerticalStrut(10));
+        lateral.add(Box.createVerticalStrut(8));
+        
+        lateral.add(new JLabel("Elegir Posición a Llenar:"));
+        lateral.add(comboPosicionesLibres);
+        lateral.add(Box.createVerticalStrut(6));
+        lateral.add(new JLabel("Buscar Jugador (Escribe 3+ letras):"));
+        lateral.add(txtBuscarJugador);
+        lateral.add(Box.createVerticalStrut(8));
+        
         lateral.add(scroll);
         lateral.add(Box.createVerticalStrut(6));
         lateral.add(lblError);
@@ -131,25 +165,35 @@ public class PanelArmar11 extends JPanel {
     public void iniciar(String nombreDT) {
         once = new onceideal();
         once.setNombreUsuario(nombreDT);
-        turno = 0;
+        jugadoresAlineadosCount = 0;
+        for (int i = 0; i < 11; i++) {
+            casillerosOcupados[i] = false;
+        }
         cancha.limpiar();
         cancha.limpiarNombres();
         cancha.setMostrarRival(false);
         lista.setEnabled(true);
+        txtBuscarJugador.setEnabled(true);
+        comboPosicionesLibres.setEnabled(true);
         btnAlinear.setVisible(true);
         btnPartido.setVisible(false);
+        txtBuscarJugador.setText("");
         siguienteTurno();
     }
 
     private void siguienteTurno() {
         lblError.setText(" ");
-        if (turno >= 11) {
+        txtBuscarJugador.setText("");
+        modelo.clear();
+
+        if (jugadoresAlineadosCount >= 11) {
             cancha.setResaltado(-1);
             lblTurno.setText("¡Equipo completo!");
-            lblPosicion.setText("Tu 11 está listo");
             lblClub.setText("—");
             modelo.clear();
             lista.setEnabled(false);
+            txtBuscarJugador.setEnabled(false);
+            comboPosicionesLibres.setEnabled(false);
             btnAlinear.setVisible(false);
             btnPartido.setVisible(true);
             return;
@@ -160,33 +204,67 @@ public class PanelArmar11 extends JPanel {
                 lblError.setText("No hay clubes cargados.");
                 return;
             }
-            modelo.clear();
-            for (jugador j : service.listarJugadoresDeClub(clubTurno.getId())) {
-                modelo.addElement(j);
-            }
+            jugadoresDelClubActual = service.listarJugadoresDeClub(clubTurno.getId());
         } catch (Exception ex) {
             lblError.setText("<html>Error de datos: " + ex.getMessage() + "</html>");
             return;
         }
-        lblTurno.setText("TURNO " + (turno + 1) + " / 11");
-        lblPosicion.setText("Posición: " + Formacion.ETIQUETAS[turno]);
+        lblTurno.setText("JUGADORES: " + jugadoresAlineadosCount + " / 11");
         lblClub.setText(clubTurno.getNombre().toUpperCase());
-        cancha.setResaltado(turno);
+        
+        if (comboPosicionesLibres.getItemCount() > 0) {
+            cancha.setResaltado(comboPosicionesLibres.getSelectedIndex());
+        }
+    }
+
+    private void filtrarJugadoresPorTexto() {
+        String texto = txtBuscarJugador.getText().trim().toLowerCase();
+        modelo.clear();
+        
+        if (texto.length() < 3) {
+            return; 
+        }
+        
+        for (jugador j : jugadoresDelClubActual) {
+            String nombreCompleto = (j.getNombre() + " " + j.getApellido()).toLowerCase();
+            if (nombreCompleto.contains(texto)) {
+                modelo.addElement(j);
+            }
+        }
     }
 
     private void alinear() {
-        if (turno >= 11) return;
+        if (jugadoresAlineadosCount >= 11) return;
         try {
             jugador elegido = lista.getSelectedValue();
             if (elegido == null) {
-                throw new EntradaVaciaException("Elegí un jugador de la lista.");
+                throw new EntradaVaciaException("Escribí al menos 3 letras y seleccioná un jugador.");
             }
-            service.agregarJugadorAOnce(once, elegido, clubTurno, Formacion.CASILLEROS[turno]);
             
-            // Modificado para usar directamente el atributo getApellido() en la cancha
-            cancha.setNombre(turno, elegido.getApellido());
+            int posIndex = comboPosicionesLibres.getSelectedIndex();
+            if (posIndex < 0) {
+                throw new PosicionInvalidaException("Seleccioná una posición válida.");
+            }
             
-            turno++;
+            if (casillerosOcupados[posIndex]) {
+                throw new PosicionInvalidaException("¡Esta posición ya está ocupada!");
+            }
+            
+            // Obtenemos la etiqueta de la posición seleccionada (Ej: "LB", "CB", "GK", etc.)
+            String posicionSeleccionada = Formacion.CASILLEROS[posIndex];
+
+            // VALIDACIÓN ESTRICTA: Comprueba si el jugador puede ocupar esa posición según sus datos permitidos
+            if (!elegido.esUbicacionValida(posicionSeleccionada)) {
+                throw new PosicionInvalidaException(elegido.getApellido() + " no puede ser alineado en la posición " + posicionSeleccionada);
+            }
+            
+            // Asigna el jugador a la casilla seleccionada de forma válida
+            service.agregarJugadorAOnce(once, elegido, clubTurno, posicionSeleccionada);
+            
+            casillerosOcupados[posIndex] = true;
+            cancha.setNombre(posIndex, elegido.getApellido());
+            
+            jugadoresAlineadosCount++;
             siguienteTurno();
         } catch (EntradaVaciaException | ClubIncorrectoException | JugadorDuplicadoException
                      | PosicionInvalidaException ex) {

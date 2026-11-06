@@ -1,10 +1,15 @@
 package model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class jugador implements alineable {
-	private int id;
+    private int id;
     private String nombre;
     private int clubId;
     private String apellido;
+    
+    private final List<String> posicionesPermitidas = new ArrayList<>();
 
     public jugador(int id, String nombre, String apellido, int clubId) {
         this.id = id;
@@ -45,12 +50,35 @@ public abstract class jugador implements alineable {
         this.clubId = clubId;
     }
 
+    public List<String> getPosicionesPermitidas() {
+        return posicionesPermitidas;
+    }
+
+    public void agregarPosicion(String pos) {
+        if (pos != null) {
+            String p = pos.toUpperCase().trim();
+            if (!posicionesPermitidas.contains(p)) {
+                posicionesPermitidas.add(p);
+            }
+        }
+    }
+
+    @Override
+    public boolean esUbicacionValida(String posicionCasillero) {
+        if (posicionCasillero == null) return false;
+        String pos = posicionCasillero.toUpperCase().trim();
+        // Validación estricta consultando únicamente las posiciones que tiene en la BDD
+        return posicionesPermitidas.contains(pos);
+    }
+
     @Override
     public String toString() {
         return "Jugador{" +
                 "id=" + id +
                 ", nombre='" + nombre + '\'' +
+                ", apellido='" + apellido + '\'' +
                 ", clubId=" + clubId +
+                ", posiciones=" + posicionesPermitidas +
                 '}';
     }
 }

@@ -3,8 +3,6 @@ package model;
 public class mediocampista extends jugador {
     private boolean es5;
 
- 
-
     public mediocampista(int id, String nombre, String apellido, int clubId, boolean es5) {
         super(id, nombre, apellido, clubId);
         this.es5 = es5;
@@ -17,12 +15,5 @@ public class mediocampista extends jugador {
     public void setEs5(boolean es5) {
         this.es5 = es5;
     }
-
-    @Override
-    public boolean esUbicacionValida(String posicionCasillero) {
-        if (posicionCasillero == null) return false;
-        String pos = posicionCasillero.toUpperCase();
-        return pos.equals("MCD") || pos.equals("MC") || pos.equals("MCO")
-            || pos.equals("CDM") || pos.equals("CM") || pos.equals("CAM");
-    }
+    
 }

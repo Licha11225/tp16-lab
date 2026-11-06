@@ -1,14 +1,60 @@
 package daoimpl;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import config.ConexionBD;
 import dao.jugadorDAO;
-import model.*;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import model.arquero;
+import model.defensor;
+import model.delantero;
+import model.jugador;
+import model.mediocampista;
 
 public class jugadordaoimpl implements jugadorDAO {
+
+    @Override
+    public List<jugador> obtenerJugadoresUnicos() {
+        try {
+            return listarTodos();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<jugador> listarTodos() throws SQLException {
+        Map<Integer, jugador> mapaUnicos = new LinkedHashMap<>();
+        String sql = "SELECT j.*, jp.posicion FROM jugador j LEFT JOIN jugador_posicion jp ON j.id = jp.jugador_id";
+
+        try (Connection conn = ConexionBD.getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String posicionBD = rs.getString("posicion");
+
+                jugador j = mapaUnicos.get(id);
+                if (j == null) {
+                    j = mapearJugador(rs);
+                    mapaUnicos.put(id, j);
+                }
+                if (posicionBD != null && !posicionBD.isEmpty()) {
+                    j.agregarPosicion(posicionBD);
+                }
+            }
+        }
+        return new ArrayList<>(mapaUnicos.values());
+    }
 
     @Override
     public void insertar(jugador jugador) throws SQLException {
@@ -59,6 +105,7 @@ public class jugadordaoimpl implements jugadorDAO {
     @Override
     public jugador buscarPorId(int id) throws SQLException {
         String sql = "SELECT j.*, jp.posicion FROM jugador j LEFT JOIN jugador_posicion jp ON j.id = jp.jugador_id WHERE j.id = ?";
+        jugador j = null;
         
         try (Connection conn = ConexionBD.getConexion();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -66,17 +113,24 @@ public class jugadordaoimpl implements jugadorDAO {
             ps.setInt(1, id);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapearJugador(rs);
+                while (rs.next()) {
+                    if (j == null) {
+                        j = mapearJugador(rs);
+                    }
+                    String posicionBD = rs.getString("posicion");
+                    if (posicionBD != null && !posicionBD.isEmpty()) {
+                        j.agregarPosicion(posicionBD);
+                    }
                 }
             }
         }
-        return null;
+        return j;
     }
     
     @Override
     public jugador buscarPorNombre(String nombre) throws SQLException {
         String sql = "SELECT j.*, jp.posicion FROM jugador j LEFT JOIN jugador_posicion jp ON j.id = jp.jugador_id WHERE j.nombre = ?";
+        jugador j = null;
         
         try (Connection conn = ConexionBD.getConexion();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -84,28 +138,18 @@ public class jugadordaoimpl implements jugadorDAO {
             ps.setString(1, nombre);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapearJugador(rs);
+                while (rs.next()) {
+                    if (j == null) {
+                        j = mapearJugador(rs);
+                    }
+                    String posicionBD = rs.getString("posicion");
+                    if (posicionBD != null && !posicionBD.isEmpty()) {
+                        j.agregarPosicion(posicionBD);
+                    }
                 }
             }
         }
-        return null;
-    }
-
-    @Override
-    public List<jugador> listarTodos() throws SQLException {
-        List<jugador> lista = new ArrayList<>();
-        String sql = "SELECT j.*, jp.posicion FROM jugador j LEFT JOIN jugador_posicion jp ON j.id = jp.jugador_id";
-
-        try (Connection conn = ConexionBD.getConexion();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                lista.add(mapearJugador(rs));
-            }
-        }
-        return lista;
+        return j;
     }
 
     private jugador mapearJugador(ResultSet rs) throws SQLException {
@@ -113,49 +157,24 @@ public class jugadordaoimpl implements jugadorDAO {
         String nombre = rs.getString("nombre");
         String apellido = rs.getString("apellido");
         int clubId = rs.getInt("club_id");
-        String posicion = rs.getString("posicion");
-        
-        if (posicion != null) {
-            posicion = posicion.toUpperCase().trim();
-        } else {
-            posicion = "";
-        }
         
         boolean juegaAdelantado = rs.getBoolean("juega_adelantado");
         boolean esZagueroCentral = rs.getBoolean("es_zaguero_central");
         boolean es5 = rs.getBoolean("es_5");
         boolean es9 = rs.getBoolean("es_9");
 
-        switch (posicion) {
-            case "GK":
-            case "ARQUERO":
-                return new arquero(id, nombre, apellido, clubId, juegaAdelantado);
-                
-            case "CB":
-            case "LB":
-            case "RB":
-            case "LWB":
-            case "RWB":
-            case "DEFENSOR":
-                return new defensor(id, nombre, apellido, clubId, esZagueroCentral);
-                
-            case "MC":
-            case "MCD":
-            case "MCO":
-            case "LM":
-            case "RM":
-            case "MEDIOCAMPISTA":
-                return new mediocampista(id, nombre, apellido, clubId, es5);
-                
-            case "ST":
-            case "LW":
-            case "RW":
-            case "CF":
-            case "DELANTERO":
-                return new delantero(id, nombre, apellido, clubId, es9);
-                
-            default:
-                throw new IllegalArgumentException("Posición desconocida en BDD: " + posicion);
+        String tipoBase = rs.getString("posicion");
+        if (tipoBase == null) tipoBase = "";
+        tipoBase = tipoBase.toUpperCase().trim();
+
+        if (tipoBase.contains("DEFENSOR") || tipoBase.equals("CB") || tipoBase.equals("LB") || tipoBase.equals("RB") || tipoBase.equals("LWB") || tipoBase.equals("RWB")) {
+            return new defensor(id, nombre, apellido, clubId, esZagueroCentral);
+        } else if (tipoBase.contains("MEDIO") || tipoBase.equals("MC") || tipoBase.equals("MCD") || tipoBase.equals("MCO") || tipoBase.equals("LM") || tipoBase.equals("RM")) {
+            return new mediocampista(id, nombre, apellido, clubId, es5);
+        } else if (tipoBase.contains("DELANTERO") || tipoBase.equals("ST") || tipoBase.equals("LW") || tipoBase.equals("RW") || tipoBase.equals("CF")) {
+            return new delantero(id, nombre, apellido, clubId, es9);
+        } else {
+            return new arquero(id, nombre, apellido, clubId, juegaAdelantado);
         }
     }
 }

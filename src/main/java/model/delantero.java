@@ -3,7 +3,6 @@ package model;
 public class delantero extends jugador {
     private boolean es9;
 
-
     public delantero(int id, String nombre, String apellido, int clubId, boolean es9) {
         super(id, nombre, apellido, clubId);
         this.es9 = es9;
@@ -17,10 +16,4 @@ public class delantero extends jugador {
         this.es9 = es9;
     }
 
-    @Override
-    public boolean esUbicacionValida(String posicionCasillero) {
-        if (posicionCasillero == null) return false;
-        String pos = posicionCasillero.toUpperCase();
-        return pos.equals("ST") || pos.equals("LW") || pos.equals("RW");
-    }
 }

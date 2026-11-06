@@ -17,10 +17,4 @@ public class arquero extends jugador {
     public void setJuegaAdelantado(boolean juegaAdelantado) {
         this.juegaAdelantado = juegaAdelantado;
     }
-
-    @Override
-    public boolean esUbicacionValida(String posicionCasillero) {
-        if (posicionCasillero == null) return false;
-        return posicionCasillero.equalsIgnoreCase("GK");
-    }
 }
