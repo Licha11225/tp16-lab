@@ -1,24 +1,35 @@
 package arcade;
 
-import static arcade.Formacion.*;
-
-import model.jugador;
-
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-/**
- * Mini partido arcade de 6 jugadas. En cada una el jugador elige entre 3 opciones;
- * el resultado depende de la decisión, del nivel de tus 11 y de un poco de suerte.
- */
+import static arcade.Formacion.CB1;
+import static arcade.Formacion.CB2;
+import static arcade.Formacion.GK;
+import static arcade.Formacion.LB;
+import static arcade.Formacion.LW;
+import static arcade.Formacion.MC;
+import static arcade.Formacion.MCD;
+import static arcade.Formacion.MCO;
+import static arcade.Formacion.PROPIA;
+import static arcade.Formacion.RB;
+import static arcade.Formacion.RW;
+import static arcade.Formacion.ST;
+import model.arquero;
+import model.club;
+import model.jugador;
+
+
 public class Partido {
 
-    private static final String[] RIVALES = {
-            "Deportivo Tormenta", "Atlético Relámpago", "Rayo Azul FC",
-            "Unión Cóndores", "Real Montaña", "Estrella Roja"};
-    private static final String[] TIRADORES_RIVAL = {"Vega", "Molina", "Cruz", "Salas", "Ponce", "Iriarte"};
+    private static final String[] TIRADORES_DEFAULT = {"Vega", "Molina", "Cruz", "Salas", "Ponce", "Iriarte"};
+
+    private static final int NORMALES = 6;
+ 
+    private static final int[] ORDEN_PENALES = {ST, MCO, LW, RW, MC, MCD, LB, RB, CB1, CB2, GK};
     private static final int[] MINUTOS = {8, 24, 39, 56, 71, 86};
     private static final String[] PISTAS = {
             "Notás que el rival se descuida por tu banda izquierda.",
@@ -37,22 +48,50 @@ public class Partido {
     private final List<TipoJugada> jugadas = new ArrayList<>();
     private final List<String> cronica = new ArrayList<>();
 
-    private int golesFavor, golesContra;
-    private double impulso;      // ventaja para la próxima jugada ofensiva (por tenencia / presión)
-    private int zonaDebil;       // 0 izquierda, 1 centro, 2 derecha (se sortea en cada ataque)
+    private final List<String> tiradoresRival = new ArrayList<>();
+    private boolean tanda;
+    private int penFavor, penContra;
 
-    public Partido(String nombreDT, List<jugador> alineacion) {
+    private int golesFavor, golesContra;
+    private double impulso;      
+    private int tirador = ST; 
+    private int zonaDebil;      
+
+    /**
+     * @param alineacion  11 jugadores EN ORDEN DE CASILLERO
+     * @param rivalClub   club rival 
+     * @param plantelRival sus jugadores: de ahí sale su nivel por línea y quién patea
+     * @param bonusRival  dificultad extra para las rondas avanzadas
+     */
+    public Partido(String nombreDT, List<jugador> alineacion, club rivalClub, List<jugador> plantelRival, int bonusRival) {
         this.nombreDT = nombreDT;
         for (int i = 0; i < 11; i++) {
             once[i] = alineacion.get(i);
             rating[i] = Ratings.de(once[i]);
         }
-        rival = RIVALES[rnd.nextInt(RIVALES.length)];
-        rivAtaque = 72 + rnd.nextInt(13);
-        rivMedio = 72 + rnd.nextInt(13);
-        rivDefensa = 72 + rnd.nextInt(13);
-        rivArquero = 72 + rnd.nextInt(13);
-        rivArqueroAdelantado = rnd.nextBoolean();
+        rival = rivalClub.getNombre();
+        rivArquero = fuerza(plantelRival, 0, 1, bonusRival);
+        rivDefensa = fuerza(plantelRival, 1, 4, bonusRival);
+        rivMedio = fuerza(plantelRival, 2, 3, bonusRival);
+        rivAtaque = fuerza(plantelRival, 3, 3, bonusRival);
+
+        boolean adelantado = rnd.nextBoolean();
+        jugador mejorArq = null;
+        for (jugador j : plantelRival) {
+            if (j instanceof arquero && (mejorArq == null || Ratings.de(j) > Ratings.de(mejorArq))) mejorArq = j;
+        }
+        if (mejorArq != null) adelantado = ((arquero) mejorArq).getJuegaAdelantado();
+        rivArqueroAdelantado = adelantado;
+
+        List<jugador> ofensivos = new ArrayList<>();
+        for (jugador j : plantelRival) {
+            if (Ratings.orden(j) >= 2) ofensivos.add(j);
+        }
+        ofensivos.sort(Comparator.comparingInt((jugador j) -> -Ratings.orden(j)).thenComparingInt(j -> -Ratings.de(j)));
+        for (int i = 0; i < ofensivos.size() && tiradoresRival.size() < 6; i++) {
+            tiradoresRival.add(Ratings.corto(ofensivos.get(i)));
+        }
+        if (tiradoresRival.isEmpty()) tiradoresRival.addAll(List.of(TIRADORES_DEFAULT));
 
         jugadas.add(TipoJugada.TENENCIA);
         jugadas.add(TipoJugada.ATAQUE);
@@ -65,11 +104,68 @@ public class Partido {
         jugadas.add(especiales.get(1));
     }
 
-    // ------------------------------------------------------------------ datos para la UI
+    // Promedio de los mejores `cuantos` de una línea (0 arq, 1 def, 2 medio, 3 del) + bonus.
+    private static int fuerza(List<jugador> plantel, int linea, int cuantos, int bonus) {
+        List<Integer> r = new ArrayList<>();
+        for (jugador j : plantel) {
+            if (Ratings.orden(j) == linea) r.add(Ratings.de(j));
+        }
+        if (r.isEmpty()) return Math.min(99, 76 + bonus);
+        r.sort(Collections.reverseOrder());
+        int n = Math.min(cuantos, r.size());
+        int s = 0;
+        for (int i = 0; i < n; i++) s += r.get(i);
+        return Math.min(99, s / n + bonus);
+    }
+
+    private String tiradorRival() {
+        return tiradoresRival.get(rnd.nextInt(tiradoresRival.size()));
+    }
+
+    // Quién patea el penal de la jugada idx: el 9 en el tiempo normal, rotando en la tanda. 
+    private int slotTirador(int idx) {
+        if (idx < NORMALES) return ST;
+        int ronda = (idx - NORMALES) / 2;
+        return ORDEN_PENALES[ronda % ORDEN_PENALES.length];
+    }
+
+    // datos para la UI
 
     public String getRival() { return rival; }
     public String getNombreDT() { return nombreDT; }
     public int total() { return jugadas.size(); }
+    public int normales() { return NORMALES; }
+    public boolean enTanda() { return tanda; }
+    public boolean huboTanda() { return tanda; }
+    public int getPenFavor() { return penFavor; }
+    public int getPenContra() { return penContra; }
+
+    public boolean ganoUsuario() {
+        return golesFavor > golesContra || (golesFavor == golesContra && penFavor > penContra);
+    }
+
+    public boolean hayMas(int idx) {
+        if (idx + 1 < jugadas.size()) return true;
+        if (!tanda) {
+            if (golesFavor != golesContra) return false;
+            tanda = true;
+            agregarRondaTanda();
+            return true;
+        }
+        int rondas = (jugadas.size() - NORMALES) / 2;
+        int restan = Math.max(0, 3 - rondas);
+        boolean decidido = rondas >= 3
+                ? penFavor != penContra
+                : (penFavor > penContra + restan || penContra > penFavor + restan);
+        if (decidido) return false;
+        agregarRondaTanda();
+        return true;
+    }
+
+    private void agregarRondaTanda() {
+        jugadas.add(TipoJugada.PENAL_FAVOR);
+        jugadas.add(TipoJugada.PENAL_CONTRA);
+    }
     public int getGolesFavor() { return golesFavor; }
     public int getGolesContra() { return golesContra; }
     public List<String> getCronica() { return cronica; }
@@ -85,68 +181,84 @@ public class Partido {
                 + " · DEF " + rivDefensa + " · ARQ " + rivArquero;
     }
 
-    // ------------------------------------------------------------------ situaciones
+    // situaciones
 
     public Situacion situacion(int idx) {
         TipoJugada t = jugadas.get(idx);
-        int min = MINUTOS[idx];
+        int min = idx < NORMALES ? MINUTOS[idx] : 120;
+        boolean enTanda = idx >= NORMALES;
+        int ronda = enTanda ? (idx - NORMALES) / 2 + 1 : 0;
         String pre = (idx == 0 ? "Rueda la pelota contra " + rival + ". " : "");
         switch (t) {
-            case TENENCIA:
+            case TENENCIA -> {
                 return new Situacion(t, min, "Tenencia en el mediocampo",
                         pre + "Tenés la pelota en tu campo y el rival presiona. ¿Cómo la manejás? "
                                 + "Una buena circulación te da ventaja en la próxima jugada.",
                         new String[]{"Tocar corto y asociarse", "Cambiar de frente", "Pelotazo largo al 9"});
-            case ATAQUE:
+            }
+            case ATAQUE -> {
                 zonaDebil = rnd.nextInt(3);
                 return new Situacion(t, min, "Ataque en campo rival",
                         "Tu equipo está instalado en campo rival. " + PISTAS[zonaDebil] + " ¿Por dónde atacás?",
                         new String[]{"Por la izquierda", "Por el centro", "Por la derecha"});
-            case DEFENSA:
+            }
+            case DEFENSA -> {
                 return new Situacion(t, min, "Defensa: el rival se viene",
                         rival + " sale de contra y viene con peligro. ¿Cómo defendés?",
                         new String[]{"Presionar arriba", "Replegar y cerrar el área", "Cortar con falta táctica"});
-            case CONTRAGOLPE:
+            }
+            case CONTRAGOLPE -> {
                 return new Situacion(t, min, "¡Contragolpe!",
                         "Recuperaste la pelota y el rival quedó mal parado, hay espacios. ¿Cómo salís?",
                         new String[]{"Pase largo al 9", "Conducir con el 10 y definir", "Triangular con los extremos"});
-            case MANO_A_MANO:
+            }
+            case MANO_A_MANO -> {
                 return new Situacion(t, min, "¡Mano a mano!",
-                        "¡" + Ratings.apellido(once[ST].getNombre()) + " queda solo ante el arquero! "
+                        "¡" + ap(ST) + " queda solo ante el arquero! "
                                 + (rivArqueroAdelantado
-                                ? "El arquero rival sale muy adelantado."
-                                : "El arquero rival se queda pegado a la línea.")
+                                        ? "El arquero rival sale muy adelantado."
+                                        : "El arquero rival se queda pegado a la línea.")
                                 + " ¿Qué hacés?",
                         new String[]{"Definir de primera", "Gambetear al arquero", "Picarla por arriba"});
-            case PENAL_FAVOR:
-                return new Situacion(t, min, "¡Penal a favor!",
-                        "¡Penal para tu equipo! " + Ratings.apellido(once[ST].getNombre())
+            }
+            case PENAL_FAVOR -> {
+                return new Situacion(t, min, enTanda ? "Tanda de penales · ronda " + ronda : "¡Penal a favor!",
+                        (enTanda ? "Te toca patear. " : "¡Penal para tu equipo! ") + ap(slotTirador(idx))
                                 + " se hace cargo. ¿Hacia dónde pateás?",
                         new String[]{"A tu izquierda", "Al medio", "A tu derecha"});
-            default:
-                return new Situacion(t, min, "¡Penal en contra!",
-                        "El árbitro cobra penal para " + rival + ". Te toca adivinar: "
-                                + Ratings.apellido(once[GK].getNombre()) + " ¿hacia dónde se tira?",
+            }
+            default -> {
+                return new Situacion(t, min, enTanda ? "Tanda de penales · ronda " + ronda : "¡Penal en contra!",
+                        (enTanda ? "Patea " + rival + ". " : "El árbitro cobra penal para " + rival + ". ")
+                                + "Te toca adivinar: " + ap(GK) + " ¿hacia dónde se tira?",
                         new String[]{"Tirarte a tu izquierda", "Quedarte en el medio", "Tirarte a tu derecha"});
+            }
         }
     }
 
-    // ------------------------------------------------------------------ resolución
 
     public Resultado resolver(int idx, int op) {
         Resultado r;
-        switch (jugadas.get(idx)) {
-            case TENENCIA: r = tenencia(op); break;
-            case ATAQUE: r = ataque(op); break;
-            case DEFENSA: r = defensa(op); break;
-            case CONTRAGOLPE: r = contragolpe(op); break;
-            case MANO_A_MANO: r = manoAMano(op); break;
-            case PENAL_FAVOR: r = penalFavor(op); break;
-            default: r = penalContra(op); break;
+        tirador = slotTirador(idx);
+        r = switch (jugadas.get(idx)) {
+            case TENENCIA -> tenencia(op);
+            case ATAQUE -> ataque(op);
+            case DEFENSA -> defensa(op);
+            case CONTRAGOLPE -> contragolpe(op);
+            case MANO_A_MANO -> manoAMano(op);
+            case PENAL_FAVOR -> penalFavor(op);
+            default -> penalContra(op);
+        };
+        if (idx >= NORMALES) {
+            penFavor += r.golFavor;
+            penContra += r.golContra;
+            cronica.add("Penales (ronda " + ((idx - NORMALES) / 2 + 1) + ")  —  " + r.narracion
+                    + "  [" + penFavor + "-" + penContra + "]");
+        } else {
+            golesFavor += r.golFavor;
+            golesContra += r.golContra;
+            cronica.add("Min " + MINUTOS[idx] + "'  —  " + r.narracion);
         }
-        golesFavor += r.golFavor;
-        golesContra += r.golContra;
-        cronica.add("Min " + MINUTOS[idx] + "'  —  " + r.narracion);
         return r;
     }
 
@@ -156,9 +268,15 @@ public class Partido {
         String verbo;
         int[] cadena;
         switch (op) {
-            case 0: exito = 0.80; bonus = 0.05; verbo = "Pase de"; cadena = new int[]{MCD, MC, MCO}; break;
-            case 1: exito = 0.62; bonus = 0.09; verbo = "Cambio de frente de"; cadena = new int[]{LB, RW}; break;
-            default: exito = 0.48; bonus = 0.13; verbo = "Pelotazo de"; cadena = new int[]{GK, ST}; break;
+            case 0 -> {
+                exito = 0.80; bonus = 0.05; verbo = "Pase de"; cadena = new int[]{MCD, MC, MCO};
+            }
+            case 1 -> {
+                exito = 0.62; bonus = 0.09; verbo = "Cambio de frente de"; cadena = new int[]{LB, RW};
+            }
+            default -> {
+                exito = 0.48; bonus = 0.13; verbo = "Pelotazo de"; cadena = new int[]{GK, ST};
+            }
         }
         boolean ok = rnd.nextDouble() < p(exito + aj(medio(), rivMedio));
         Escena e = pases(ok, verbo, cadena);
@@ -179,17 +297,21 @@ public class Partido {
 
         Escena e;
         String intro;
-        if (op == 0) {
-            e = pases(ok, "Pase de", LB, LW);
-            intro = "Atacás por la izquierda. ";
-            if (ok) e.pase(PROPIA[ST][0], PROPIA[ST][1], "Centro de " + ap(LW));
-        } else if (op == 1) {
-            e = pases(ok, "Pase filtrado de", MC, MCO, ST);
-            intro = "Buscás el centro con pases cortos. ";
-        } else {
-            e = pases(ok, "Pase de", RB, RW);
-            intro = "Atacás por la derecha. ";
-            if (ok) e.pase(PROPIA[ST][0], PROPIA[ST][1], "Centro de " + ap(RW));
+        switch (op) {
+            case 0 -> {
+                e = pases(ok, "Pase de", LB, LW);
+                intro = "Atacás por la izquierda. ";
+                if (ok) e.pase(PROPIA[ST][0], PROPIA[ST][1], "Centro de " + ap(LW));
+            }
+            case 1 -> {
+                e = pases(ok, "Pase filtrado de", MC, MCO, ST);
+                intro = "Buscás el centro con pases cortos. ";
+            }
+            default -> {
+                e = pases(ok, "Pase de", RB, RW);
+                intro = "Atacás por la derecha. ";
+                if (ok) e.pase(PROPIA[ST][0], PROPIA[ST][1], "Centro de " + ap(RW));
+            }
         }
         if (!ok) {
             return new Resultado(intro + "La defensa rival llega a cortar el pase.", 0, 0, e);
@@ -203,27 +325,31 @@ public class Partido {
         boolean ok;
         String intro;
         double imp = usarImpulso();
-        if (op == 0) {
-            pPase = p(0.55 + aj(ataque(), rivDefensa));
-            pGol = p(0.40 + aj(rating[ST], rivArquero) + imp);
-            ok = rnd.nextDouble() < pPase;
-            e = pases(ok, "Pase largo de", MCD, ST);
-            intro = "Pase largo a la espalda de la defensa. ";
-            return ok ? rematarNuestro(e, ST, pGol, intro) : new Resultado(intro + "El pase queda muy largo.", 0, 0, e);
-        } else if (op == 1) {
-            pPase = p(0.62 + aj(medio(), rivMedio));
-            pGol = p(0.32 + aj(rating[MCO], rivArquero) + imp);
-            ok = rnd.nextDouble() < pPase;
-            e = pases(ok, "Conduce", MCD, MCO);
-            intro = "Salís conduciendo con " + ap(MCO) + ". ";
-            return ok ? rematarNuestro(e, MCO, pGol, intro) : new Resultado(intro + "Le sacan la pelota en la carrera.", 0, 0, e);
-        } else {
-            pPase = p(0.48 + aj(ataque(), rivDefensa));
-            pGol = p(0.50 + aj(rating[ST], rivArquero) + imp);
-            ok = rnd.nextDouble() < pPase;
-            e = pases(ok, "Pase de", MC, LW, ST);
-            intro = "Triangulás con los extremos. ";
-            return ok ? rematarNuestro(e, ST, pGol, intro) : new Resultado(intro + "Un pase se queda corto y lo cortan.", 0, 0, e);
+        switch (op) {
+            case 0 -> {
+                pPase = p(0.55 + aj(ataque(), rivDefensa));
+                pGol = p(0.40 + aj(rating[ST], rivArquero) + imp);
+                ok = rnd.nextDouble() < pPase;
+                e = pases(ok, "Pase largo de", MCD, ST);
+                intro = "Pase largo a la espalda de la defensa. ";
+                return ok ? rematarNuestro(e, ST, pGol, intro) : new Resultado(intro + "El pase queda muy largo.", 0, 0, e);
+            }
+            case 1 -> {
+                pPase = p(0.62 + aj(medio(), rivMedio));
+                pGol = p(0.32 + aj(rating[MCO], rivArquero) + imp);
+                ok = rnd.nextDouble() < pPase;
+                e = pases(ok, "Conduce", MCD, MCO);
+                intro = "Salís conduciendo con " + ap(MCO) + ". ";
+                return ok ? rematarNuestro(e, MCO, pGol, intro) : new Resultado(intro + "Le sacan la pelota en la carrera.", 0, 0, e);
+            }
+            default -> {
+                pPase = p(0.48 + aj(ataque(), rivDefensa));
+                pGol = p(0.50 + aj(rating[ST], rivArquero) + imp);
+                ok = rnd.nextDouble() < pPase;
+                e = pases(ok, "Pase de", MC, LW, ST);
+                intro = "Triangulás con los extremos. ";
+                return ok ? rematarNuestro(e, ST, pGol, intro) : new Resultado(intro + "Un pase se queda corto y lo cortan.", 0, 0, e);
+            }
         }
     }
 
@@ -232,21 +358,21 @@ public class Partido {
         double pGolRival;
         String intro;
         switch (op) {
-            case 0:
+            case 0 -> {
                 pCorte = p(0.50 + aj(medio(), rivMedio));
                 pGolRival = 0.48;
                 intro = "Presionás arriba. ";
-                break;
-            case 1:
+            }
+            case 1 -> {
                 pCorte = p(0.66 + aj(defensa(), rivAtaque));
                 pGolRival = 0.36;
                 intro = "Retrocedés y cerrás el área. ";
-                break;
-            default:
+            }
+            default -> {
                 pCorte = 0.80;
                 pGolRival = 0.30;
                 intro = "Cortás el avance con falta táctica. ";
-                break;
+            }
         }
         pGolRival = p(pGolRival + aj(rivAtaque, arquero()));
 
@@ -268,64 +394,68 @@ public class Partido {
         }
         e.pase(0.24, 0.46, "Llega al área");
         Escena.Fin fin = definirRival(pGolRival);
-        String tirador = TIRADORES_RIVAL[rnd.nextInt(TIRADORES_RIVAL.length)];
-        tiroAlArco(e, false, fin, "Remata " + tirador);
-        return new Resultado(intro + narrarRival(fin, tirador), 0,
+        String nombreTirador = tiradorRival();
+        tiroAlArco(e, false, fin, "Remata " + nombreTirador);
+        return new Resultado(intro + narrarRival(fin, nombreTirador), 0,
                 fin == Escena.Fin.GOL_CONTRA ? 1 : 0, e);
     }
 
     private Resultado manoAMano(int op) {
         boolean adel = rivArqueroAdelantado;
         double base;
-        switch (op) {
-            case 0: base = 0.42 + (adel ? 0 : 0.08); break;
-            case 1: base = 0.50 + (adel ? 0.12 : -0.06); break;
-            default: base = 0.36 + (adel ? 0.18 : -0.08); break;
-        }
+        base = switch (op) {
+            case 0 -> 0.42 + (adel ? 0 : 0.08);
+            case 1 -> 0.50 + (adel ? 0.12 : -0.06);
+            default -> 0.36 + (adel ? 0.18 : -0.08);
+        };
         double pGol = p(base + aj(rating[ST], rivArquero) + usarImpulso());
         Escena e = new Escena(PROPIA[MCO][0], PROPIA[MCO][1]);
         e.pase(0.86, 0.50, "Pase de " + ap(MCO) + " para " + ap(ST));
         String tx;
         String intro;
-        if (op == 0) {
-            tx = "Define " + ap(ST);
-            intro = "Definís de primera. ";
-        } else if (op == 1) {
-            e.pase(0.93, 0.60, "Gambeta de " + ap(ST));
-            tx = "Remata " + ap(ST);
-            intro = "Intentás gambetear al arquero. ";
-        } else {
-            tx = "La pica " + ap(ST);
-            intro = "Intentás picarla por arriba. ";
+        switch (op) {
+            case 0 -> {
+                tx = "Define " + ap(ST);
+                intro = "Definís de primera. ";
+            }
+            case 1 -> {
+                e.pase(0.93, 0.60, "Gambeta de " + ap(ST));
+                tx = "Remata " + ap(ST);
+                intro = "Intentás gambetear al arquero. ";
+            }
+            default -> {
+                tx = "La pica " + ap(ST);
+                intro = "Intentás picarla por arriba. ";
+            }
         }
         return rematarNuestro(e, ST, pGol, intro, tx);
     }
 
     private Resultado penalFavor(int op) {
-        int tir = op - 1; // -1 arriba (izquierda del pateador), 0 centro, 1 abajo
+        int tir = op - 1; // -1 arriba izquierda del pateador, 0 centro, 1 abajo
         double rr = rnd.nextDouble();
-        int k = rr < 0.35 ? -1 : (rr < 0.65 ? 0 : 1); // hacia dónde se tira el arquero rival
-        double pErrar = clamp(0.10 - (rating[ST] - 75) * 0.003, 0.03, 0.15);
+        int k = rr < 0.35 ? -1 : (rr < 0.65 ? 0 : 1); 
+        double pErrar = clamp(0.10 - (rating[tirador] - 75) * 0.003, 0.03, 0.15);
         Escena.Fin fin;
         if (rnd.nextDouble() < pErrar) {
             fin = Escena.Fin.AFUERA;
         } else if (k == tir) {
-            double pAtaja = clamp((tir == 0 ? 0.92 : 0.72) + aj(rivArquero, rating[ST]), 0.40, 0.95);
+            double pAtaja = clamp((tir == 0 ? 0.92 : 0.72) + aj(rivArquero, rating[tirador]), 0.40, 0.95);
             fin = rnd.nextDouble() < pAtaja ? Escena.Fin.ATAJADA : Escena.Fin.GOL_FAVOR;
         } else {
             fin = Escena.Fin.GOL_FAVOR;
         }
         Escena e = new Escena(0.88, 0.50);
-        tiroAlArco(e, true, fin, "Patea " + ap(ST), tir, k);
+        tiroAlArco(e, true, fin, "Patea " + ap(tirador), tir, k);
         String donde = tir == 0 ? "al medio" : (tir < 0 ? "a su izquierda" : "a su derecha");
         String intro = "Pateás " + donde + ". ";
-        return new Resultado(intro + narrarNuestro(fin, ap(ST)), fin == Escena.Fin.GOL_FAVOR ? 1 : 0, 0, e);
+        return new Resultado(intro + narrarNuestro(fin, ap(tirador)), fin == Escena.Fin.GOL_FAVOR ? 1 : 0, 0, e);
     }
 
     private Resultado penalContra(int op) {
-        int d = op - 1; // lado al que se tira tu arquero
+        int d = op - 1; 
         double rr = rnd.nextDouble();
-        int s = rr < 0.38 ? -1 : (rr < 0.62 ? 0 : 1); // lado del remate rival
+        int s = rr < 0.38 ? -1 : (rr < 0.62 ? 0 : 1); 
         Escena.Fin fin;
         if (rnd.nextDouble() < 0.08) {
             fin = Escena.Fin.AFUERA;
@@ -335,14 +465,13 @@ public class Partido {
         } else {
             fin = Escena.Fin.GOL_CONTRA;
         }
-        String tirador = TIRADORES_RIVAL[rnd.nextInt(TIRADORES_RIVAL.length)];
+        String nombreTirador = tiradorRival();
         Escena e = new Escena(0.12, 0.50);
-        tiroAlArco(e, false, fin, "Patea " + tirador, s, d);
+        tiroAlArco(e, false, fin, "Patea " + nombreTirador, s, d);
         String intro = "Te tirás " + (d == 0 ? "al medio" : (d < 0 ? "a tu izquierda" : "a tu derecha")) + ". ";
-        return new Resultado(intro + narrarRival(fin, tirador), 0, fin == Escena.Fin.GOL_CONTRA ? 1 : 0, e);
+        return new Resultado(intro + narrarRival(fin, nombreTirador), 0, fin == Escena.Fin.GOL_CONTRA ? 1 : 0, e);
     }
 
-    // ------------------------------------------------------------------ remates y escenas
 
     private Resultado rematarNuestro(Escena e, int tirador, double pGol, String intro) {
         return rematarNuestro(e, tirador, pGol, intro, "Remata " + ap(tirador));
@@ -375,41 +504,35 @@ public class Partido {
         int ladoBola = rnd.nextInt(3) - 1;
         int ladoArq;
         if (fin == Escena.Fin.GOL_FAVOR || fin == Escena.Fin.GOL_CONTRA) {
-            ladoArq = ladoBola == 0 ? (rnd.nextBoolean() ? 1 : -1) : -ladoBola; // el arquero se va para el otro lado
+            ladoArq = ladoBola == 0 ? (rnd.nextBoolean() ? 1 : -1) : -ladoBola; 
         } else {
             ladoArq = rnd.nextInt(3) - 1;
         }
         tiroAlArco(e, derecha, fin, texto, ladoBola, ladoArq);
     }
 
-    /** Agrega el remate al arco (derecha = arco rival, izquierda = arco propio) y el cartel final. */
     private void tiroAlArco(Escena e, boolean derecha, Escena.Fin fin, String texto, int ladoBola, int ladoArq) {
         double dir = derecha ? 1 : -1;
         double gx = derecha ? 1.0 : 0.0;
         switch (fin) {
-            case GOL_FAVOR:
-            case GOL_CONTRA:
-                e.remate(gx + dir * 0.025, 0.5 + ladoBola * 0.05, texto);
-                break;
-            case ATAJADA:
-                e.remate(gx - dir * 0.045, 0.5 + ladoArq * 0.075, texto);
-                break;
-            case PALO:
+            case GOL_FAVOR, GOL_CONTRA -> e.remate(gx + dir * 0.025, 0.5 + ladoBola * 0.05, texto);
+            case ATAJADA -> e.remate(gx - dir * 0.045, 0.5 + ladoArq * 0.075, texto);
+            case PALO -> {
                 int s = ladoBola == 0 ? (rnd.nextBoolean() ? 1 : -1) : ladoBola;
                 e.remate(gx, 0.5 + s * 0.06, texto);
                 e.pase(gx - dir * 0.07, 0.5 + s * 0.14, "¡Pega en el palo!");
                 ladoArq = s;
-                break;
-            default: // AFUERA
+            }
+            default -> {
+                // AFUERA
                 e.remate(gx + dir * 0.03, rnd.nextBoolean() ? 0.30 : 0.70, texto);
                 ladoArq = 0;
-                break;
+            }
         }
         e.arquero(!derecha, ladoArq);
         e.fin(fin, banner(fin));
     }
 
-    /** Cadena de pases entre jugadores propios. Si falla, el último pase lo corta el rival. */
     private Escena pases(boolean ok, String verbo, int... slots) {
         Escena e = new Escena(PROPIA[slots[0]][0], PROPIA[slots[0]][1]);
         for (int i = 1; i < slots.length; i++) {
@@ -427,43 +550,41 @@ public class Partido {
         return e;
     }
 
-    // ------------------------------------------------------------------ textos
 
     private String narrarNuestro(Escena.Fin fin, String tirador) {
-        switch (fin) {
-            case GOL_FAVOR: return "¡GOOOL! " + tirador + " la manda a la red.";
-            case ATAJADA: return "Remata " + tirador + " pero el arquero rival la saca.";
-            case PALO: return "¡La pegó en el palo! " + tirador + " no lo puede creer.";
-            default: return "El remate de " + tirador + " se va afuera.";
-        }
+        return switch (fin) {
+            case GOL_FAVOR -> "¡GOOOL! " + tirador + " la manda a la red.";
+            case ATAJADA -> "Remata " + tirador + " pero el arquero rival la saca.";
+            case PALO -> "¡La pegó en el palo! " + tirador + " no lo puede creer.";
+            default -> "El remate de " + tirador + " se va afuera.";
+        };
     }
 
     private String narrarRival(Escena.Fin fin, String tirador) {
-        switch (fin) {
-            case GOL_CONTRA: return "Gol de " + rival + ": " + tirador + " no perdona.";
-            case ATAJADA: return "¡Se luce " + ap(GK) + " y evita el gol!";
-            case PALO: return "¡El palo salva a tu equipo!";
-            default: return "El remate de " + tirador + " se va desviado.";
-        }
+        return switch (fin) {
+            case GOL_CONTRA -> "Gol de " + rival + ": " + tirador + " no perdona.";
+            case ATAJADA -> "¡Se luce " + ap(GK) + " y evita el gol!";
+            case PALO -> "¡El palo salva a tu equipo!";
+            default -> "El remate de " + tirador + " se va desviado.";
+        };
     }
 
     private static String banner(Escena.Fin fin) {
-        switch (fin) {
-            case GOL_FAVOR: return "¡GOOOL!";
-            case GOL_CONTRA: return "GOL RIVAL";
-            case ATAJADA: return "¡ATAJADA!";
-            case AFUERA: return "¡AFUERA!";
-            case PALO: return "¡AL PALO!";
-            case PERDIDA: return "¡PELOTA PERDIDA!";
-            case RECUPERACION: return "¡RECUPERADA!";
-            default: return "";
-        }
+        return switch (fin) {
+            case GOL_FAVOR -> "¡GOOOL!";
+            case GOL_CONTRA -> "GOL RIVAL";
+            case ATAJADA -> "¡ATAJADA!";
+            case AFUERA -> "¡AFUERA!";
+            case PALO -> "¡AL PALO!";
+            case PERDIDA -> "¡PELOTA PERDIDA!";
+            case RECUPERACION -> "¡RECUPERADA!";
+            default -> "";
+        };
     }
 
-    // ------------------------------------------------------------------ utilidades
 
     private String ap(int slot) {
-        return Ratings.apellido(once[slot].getNombre());
+        return Ratings.corto(once[slot]);
     }
 
     private int avg(int... slots) {

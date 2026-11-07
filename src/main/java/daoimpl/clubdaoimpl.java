@@ -2,7 +2,7 @@ package daoimpl;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet; // Importado en minúscula según la estructura de tu proyecto
+import java.sql.ResultSet; 
 import java.sql.SQLException;
 
 import config.ConexionBD;
@@ -12,8 +12,7 @@ import model.club;
 public class clubdaoimpl implements clubDAO {
 
     @Override
-    public club obtenerAleatorio() throws SQLException { // Cambiado de Club a club
-        // En MySQL, ORDER BY RAND() LIMIT 1 te trae una sola fila al azar
+    public club obtenerAleatorio() throws SQLException {
         String sql = "SELECT * FROM club ORDER BY RAND() LIMIT 1";
 
         try (Connection conn = ConexionBD.getConexion();
@@ -21,16 +20,15 @@ public class clubdaoimpl implements clubDAO {
              ResultSet rs = ps.executeQuery()) {
 
             if (rs.next()) {
-                // Nota: El modelo club tiene "liga", pero tu tabla SQL no lo tiene. 
-                // Por eso le pasamos un string vacío o null.
+
                 return new club(rs.getInt("id"), rs.getString("nombre"), ""); // Cambiado de Club a club
             }
         }
-        return null; // Retorna null si la tabla está vacía
+        return null; 
     }
 
     @Override
-    public club buscarPorId(int id) throws SQLException { // Cambiado de Club a club
+    public club buscarPorId(int id) throws SQLException { 
         String sql = "SELECT * FROM club WHERE id = ?";
 
         try (Connection conn = ConexionBD.getConexion();
@@ -40,7 +38,7 @@ public class clubdaoimpl implements clubDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new club(rs.getInt("id"), rs.getString("nombre"), ""); // Cambiado de Club a club
+                    return new club(rs.getInt("id"), rs.getString("nombre"), ""); 
                 }
             }
         }

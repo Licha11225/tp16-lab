@@ -1,4 +1,4 @@
-package config; // o package config / daoimpl según donde la tengas
+package config; 
 
 import java.sql.Connection;
 import java.sql.DriverManager;

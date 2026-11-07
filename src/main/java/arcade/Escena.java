@@ -3,10 +3,7 @@ package arcade;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Guion de la mini cinemática: la pelota recorre una lista de tramos y al final se muestra un cartel.
- * Coordenadas normalizadas (ver {@link Formacion}); pueden pasarse un poco de 0..1 para el arco.
- */
+
 public class Escena {
 
     public enum Fin { OK, GOL_FAVOR, GOL_CONTRA, ATAJADA, AFUERA, PALO, PERDIDA, RECUPERACION }
@@ -31,7 +28,6 @@ public class Escena {
     public Fin fin = Fin.OK;
     public String banner = "";
 
-    /** Arquero que se tira durante el remate (si corresponde). lado: -1 arriba, 0 centro, 1 abajo. */
     public boolean hayArquero;
     public boolean arqueroPropio;
     public int arqueroLado;

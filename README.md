@@ -9,10 +9,13 @@ Swing + FlatLaf + Maven (Java 21).
 
 ## Cómo se juega
 1. Poné tu nombre de DT y tocá JUGAR.
-2. Armá el 11 (4-3-3): en cada turno sale un club al azar. Elegí un jugador de ese club que sirva
-   para la posición marcada (aro amarillo). El service valida club, duplicados y posición.
-3. Jugá un partido de 6 jugadas. En cada una elegís entre 3 opciones (tenencia, atacar por una zona,
-   defender, contragolpe, mano a mano, penal a favor / en contra) y se ve una mini cinemática.
+2. Armá el 11 (4-3-3): en cada turno sale un club al azar. Elegí la posición a llenar (aro amarillo en la cancha)
+   y la lista te muestra solo los jugadores de ese club que pueden jugar ahí (según la BDD). Cada jugador queda
+   en el casillero que elegiste y juega el partido en esa posición. Si ningún jugador del club sirve para los
+   puestos que te quedan, aparece "Sortear otro club".
+3. Eliminatoria de 3 partidos: Cuartos, Semifinal y Final contra clubes de la BDD (cada ronda el rival es algo
+   más duro; su nivel sale de su plantel). Cada partido son 6 jugadas con 3 opciones. Si termina empatado
+   se define por tanda de penales. Si perdés, quedás eliminado.
 
 ## Datos
 - Si MySQL responde (config/ConexionBD.java) y tiene clubes, usa los DAO originales.

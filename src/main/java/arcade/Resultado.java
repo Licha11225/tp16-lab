@@ -1,6 +1,5 @@
 package arcade;
 
-/** Qué pasó después de decidir + la escena para la mini cinemática. */
 public class Resultado {
     public final String narracion;
     public final int golFavor;

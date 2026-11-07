@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import arcade.Ratings;
+import arcade.Torneo;
 import dao.clubDAO;
 import dao.jugadorDAO;
 import dao.onceidealDAO;
@@ -38,13 +39,37 @@ public class juegoservice {
     public List<jugador> listarJugadoresDeClub(int clubId) throws Exception {
         List<jugador> resultado = new ArrayList<>();
         for (jugador j : jugadorDAO.listarTodos()) {
-            // Evitamos unboxing innecesario comparando de forma segura
             if (j.getClubId() != null && j.getClubId().equals(clubId)) {
                 resultado.add(j);
             }
         }
         resultado.sort(Comparator.comparingInt(Ratings::orden).thenComparing(jugador::getNombre));
         return resultado;
+    }
+
+    public Torneo crearTorneo() throws Exception {
+        List<club> rivales = new ArrayList<>();
+        List<List<jugador>> planteles = new ArrayList<>();
+        int intentos = 0;
+        while (rivales.size() < Torneo.FASES.length && intentos++ < 100) {
+            club c = clubDAO.obtenerAleatorio();
+            if (c == null) break;
+            boolean repetido = false;
+            for (club r : rivales) {
+                if (r.getId() == c.getId()) repetido = true;
+            }
+            if (repetido) continue;
+            rivales.add(c);
+            planteles.add(listarJugadoresDeClub(c.getId()));
+        }
+        if (rivales.isEmpty()) {
+            throw new Exception("No hay clubes cargados para armar la eliminatoria.");
+        }
+        for (int i = 0; rivales.size() < Torneo.FASES.length; i++) {
+            rivales.add(rivales.get(i));
+            planteles.add(planteles.get(i));
+        }
+        return new Torneo(rivales, planteles);
     }
 
     public jugador buscarJugadorPorNombre(String nombre) throws EntradaVaciaException, JugadorNoEncontradoException, Exception {
@@ -71,7 +96,8 @@ public class juegoservice {
         }
 
         for (jugador j : once.getListaJugadores()) {
-            if (j.getId().equals(ficha.getId())) {
+            if (j == null || !j.getId().equals(ficha.getId())) {
+            } else {
                 throw new JugadorDuplicadoException(ficha.getNombre() + " ya fue agregado a tu 11. No podés repetirlo.");
             }
         }

@@ -17,7 +17,6 @@
     </properties>
 
     <dependencies>
-        <!-- Look and feel moderno para Swing -->
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
@@ -45,7 +44,6 @@
                 </configuration>
             </plugin>
 
-            <!-- mvn package -> genera target/futbol11-arcade-1.0.jar ejecutable (java -jar) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

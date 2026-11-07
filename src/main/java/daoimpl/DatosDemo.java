@@ -1,14 +1,14 @@
 package daoimpl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import model.arquero;
 import model.club;
 import model.defensor;
 import model.delantero;
 import model.jugador;
 import model.mediocampista;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public final class DatosDemo {
 
@@ -46,15 +46,21 @@ public final class DatosDemo {
                 
                 int clubId = c + 1;
                 
+                String[] pos = {"GK", "LB", "CB", "CB", "RB", "MCD", "MC", "MCO", "LW", "ST", "RW"};
+                jugador j;
                 if (k == 0) {
-                    lista.add(new arquero(id, nombre, apellido, clubId, n % 3 == 0));
+                    j = new arquero(id, nombre, apellido, clubId, n % 3 == 0);
                 } else if (k <= 4) {
-                    lista.add(new defensor(id, nombre, apellido, clubId, k == 2 || k == 3));
+                    j = new defensor(id, nombre, apellido, clubId, k == 2 || k == 3);
                 } else if (k <= 7) {
-                    lista.add(new mediocampista(id, nombre, apellido, clubId, k == 5));
+                    j = new mediocampista(id, nombre, apellido, clubId, k == 5);
                 } else {
-                    lista.add(new delantero(id, nombre, apellido, clubId, k == 9));
+                    j = new delantero(id, nombre, apellido, clubId, k == 9);
                 }
+                j.agregarPosicion(pos[k]);
+                if (k == 6) j.agregarPosicion("MCD");   // algunos juegan en más de un puesto, como en la BDD
+                if (k == 8 || k == 10) j.agregarPosicion(k == 8 ? "RW" : "LW");
+                lista.add(j);
             }
         }
         return lista;

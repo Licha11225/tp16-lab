@@ -40,7 +40,6 @@ public class onceidealdaoimpl implements onceidealDAO {
 
             try (PreparedStatement psDetalle = conn.prepareStatement(sqlDetalle)) {
                 
-                // CAMBIO AQUÍ: 'jugador' en minúscula
                 for (jugador jugador : once.getListaJugadores()) {
                     psDetalle.setInt(1, once.getId());      
                     psDetalle.setInt(2, jugador.getId());    
@@ -55,6 +54,7 @@ public class onceidealdaoimpl implements onceidealDAO {
             if (conn != null) {
                 conn.rollback(); 
             }
+            throw e;  
         } finally {
             if (conn != null) {
                 conn.setAutoCommit(true);

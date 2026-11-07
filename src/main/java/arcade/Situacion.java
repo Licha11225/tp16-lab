@@ -1,6 +1,5 @@
 package arcade;
 
-/** Lo que se le muestra al jugador antes de decidir. */
 public class Situacion {
     public final TipoJugada tipo;
     public final int minuto;

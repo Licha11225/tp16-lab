@@ -1,17 +1,5 @@
 package ui;
 
-import arcade.Partido;
-import arcade.Resultado;
-import arcade.Situacion;
-import model.onceideal;
-import arcade.Ratings;
-
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -20,8 +8,25 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 
-/** Paso 2: el partido arcade. Elegís qué hacer en cada jugada y se ve una mini cinemática. */
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+import arcade.Partido;
+import arcade.Ratings;
+import arcade.Resultado;
+import arcade.Situacion;
+import arcade.Torneo;
+import model.onceideal;
+
 public class PanelPartido extends JPanel {
+
+    private static final Color AZUL = new Color(0x56ccf2);
+    private static final Color DORADO = new Color(0xffd54f);
 
     private final VentanaPrincipal v;
     private final CanchaPanel cancha = new CanchaPanel();
@@ -41,7 +46,10 @@ public class PanelPartido extends JPanel {
     private final JButton btnContinuar = new JButton("Continuar");
 
     private Partido partido;
+    private Torneo torneo;
     private int idx;
+    private boolean hayMas;
+    private int golesPrevios;
 
     public PanelPartido(VentanaPrincipal v) {
         this.v = v;
@@ -55,12 +63,12 @@ public class PanelPartido extends JPanel {
         lblLocal.setFont(fEquipo);
         lblRival.setFont(fEquipo);
         lblRival.setForeground(new Color(0xeb5757));
-        lblLocal.setForeground(new Color(0x56ccf2));
+        lblLocal.setForeground(AZUL);
         lblMarcador.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 36));
         fila.add(lblLocal);
         fila.add(lblMarcador);
         fila.add(lblRival);
-        lblInfo.setForeground(new Color(0xffd54f));
+        lblInfo.setForeground(DORADO);
         lblStats.setForeground(Color.GRAY);
         lblStats.setFont(lblStats.getFont().deriveFont(11f));
         JPanel filas = new JPanel(new GridLayout(3, 1));
@@ -76,7 +84,7 @@ public class PanelPartido extends JPanel {
         JPanel panelOp = new JPanel();
         panelOp.setLayout(new BoxLayout(panelOp, BoxLayout.Y_AXIS));
         lblTitulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
-        lblTitulo.setForeground(new Color(0xffd54f));
+        lblTitulo.setForeground(DORADO);
         lblTitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
         lblDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
         JPanel botones = new JPanel(new GridLayout(1, 3, 10, 0));
@@ -99,7 +107,7 @@ public class PanelPartido extends JPanel {
         JPanel panelRes = new JPanel(new BorderLayout(0, 8));
         lblNarracion.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
         btnContinuar.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
-        btnContinuar.setPreferredSize(new Dimension(200, 48));
+        btnContinuar.setPreferredSize(new Dimension(260, 48));
         btnContinuar.addActionListener(e -> continuar());
         JPanel pie = new JPanel();
         pie.add(btnContinuar);
@@ -112,26 +120,42 @@ public class PanelPartido extends JPanel {
         add(sur, BorderLayout.SOUTH);
     }
 
-    public void iniciar(String nombreDT, onceideal once) {
-        partido = new Partido(nombreDT, once.getListaJugadores());
+    public void iniciar(String nombreDT, onceideal once, Torneo torneo) {
+        this.torneo = torneo;
+        partido = torneo.nuevoPartido(nombreDT, once.getListaJugadores());
         idx = 0;
+        golesPrevios = 0;
         cancha.limpiar();
         cancha.limpiarNombres();
         for (int i = 0; i < 11; i++) {
-            cancha.setNombre(i, Ratings.apellido(once.getListaJugadores().get(i).getNombre()));
+            cancha.setNombre(i, Ratings.corto(once.getListaJugadores().get(i)));
         }
         cancha.setResaltado(-1);
         cancha.setMostrarRival(true);
         lblLocal.setText(nombreDT);
         lblRival.setText(partido.getRival());
         lblMarcador.setText("0 - 0");
+        lblInfo.setText(torneo.nombreFase());
         lblStats.setText(partido.resumenEquipos());
-        mostrarSituacion();
+
+        // cartel de presentación de la fase, y recién después aparece la primera jugada
+        btnContinuar.setVisible(false);
+        lblNarracion.setText(html("<b>" + torneo.nombreFase() + "</b> — " + nombreDT + " vs " + partido.getRival()));
+        cardsSur.show(sur, "res");
+        cancha.cartel(torneo.nombreFase(), () -> {
+            btnContinuar.setVisible(true);
+            mostrarSituacion();
+        });
     }
 
     private void mostrarSituacion() {
         Situacion s = partido.situacion(idx);
-        lblInfo.setText("Jugada " + (idx + 1) + " / " + partido.total() + "   ·   Minuto " + s.minuto + "'");
+        if (idx >= partido.normales()) {
+            lblInfo.setText(torneo.nombreFase() + "   ·   TANDA DE PENALES   ·   " + partido.getPenFavor() + " - " + partido.getPenContra());
+        } else {
+            lblInfo.setText(torneo.nombreFase() + "   ·   Jugada " + (idx + 1) + " / " + partido.normales()
+                    + "   ·   Minuto " + s.minuto + "'");
+        }
         lblTitulo.setText(s.titulo.toUpperCase());
         lblDesc.setText(html(s.descripcion));
         for (int i = 0; i < 3; i++) {
@@ -147,14 +171,34 @@ public class PanelPartido extends JPanel {
         Resultado r = partido.resolver(idx, op);
         cancha.reproducir(r.escena, () -> {
             lblMarcador.setText(partido.getGolesFavor() + " - " + partido.getGolesContra());
+            if (partido.getGolesFavor() + partido.getGolesContra() > golesPrevios) destacarMarcador(r.golFavor > 0);
+            golesPrevios = partido.getGolesFavor() + partido.getGolesContra();
+            if (partido.enTanda()) {
+                lblInfo.setText(torneo.nombreFase() + "   ·   TANDA DE PENALES   ·   "
+                        + partido.getPenFavor() + " - " + partido.getPenContra());
+            }
             lblNarracion.setText(html(r.narracion));
-            btnContinuar.setText(idx == partido.total() - 1 ? "Ver resultado final" : "Siguiente jugada");
+            hayMas = partido.hayMas(idx);   // si terminó empatado, acá se arma la tanda
+            if (!hayMas) btnContinuar.setText("Ver resultado final");
+            else if (idx + 1 == partido.normales()) btnContinuar.setText("¡Empate! Vamos a los penales");
+            else btnContinuar.setText(idx + 1 > partido.normales() ? "Siguiente penal" : "Siguiente jugada");
             cardsSur.show(sur, "res");
         });
     }
 
+    private void destacarMarcador(boolean favor) {
+        lblMarcador.setForeground(favor ? DORADO : new Color(0xff5252));
+        lblMarcador.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 46));
+        Timer t = new Timer(900, e -> {
+            lblMarcador.setForeground(null);
+            lblMarcador.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 36));
+        });
+        t.setRepeats(false);
+        t.start();
+    }
+
     private void continuar() {
-        if (idx >= partido.total() - 1) {
+        if (!hayMas) {
             v.irAFinal(partido);
         } else {
             idx++;

@@ -6,10 +6,6 @@ import model.delantero;
 import model.jugador;
 import model.mediocampista;
 
-/**
- * Como el modelo no guarda estadísticas, el nivel (OVR) de cada jugador sale de su nombre
- * (siempre es el mismo para el mismo jugador) más un bonus por su rasgo especial.
- */
 public final class Ratings {
 
     private Ratings() {
@@ -18,14 +14,13 @@ public final class Ratings {
     public static int de(jugador j) {
         int base = 66 + Math.floorMod(j.getNombre().toLowerCase().hashCode(), 25); // 66..90
         boolean rasgo = false;
-        if (j instanceof arquero a) {
-            rasgo = a.getJuegaAdelantado();
-        } else if (j instanceof defensor d) {
-            rasgo = d.getEsZagueroCentral();
-        } else if (j instanceof mediocampista m) {
-            rasgo = m.getEs5();
-        } else if (j instanceof delantero f) {
-            rasgo = f.getEs9();
+        switch (j) {
+            case arquero a -> rasgo = a.getJuegaAdelantado();
+            case defensor d -> rasgo = d.getEsZagueroCentral();
+            case mediocampista m -> rasgo = m.getEs5();
+            case delantero f -> rasgo = f.getEs9();
+            default -> {
+            }
         }
         return Math.min(95, base + (rasgo ? 3 : 0));
     }
@@ -42,6 +37,11 @@ public final class Ratings {
         if (j instanceof defensor) return 1;
         if (j instanceof mediocampista) return 2;
         return 3;
+    }
+
+    public static String corto(jugador j) {
+        String a = j.getApellido();
+        return (a != null && !a.isBlank()) ? a.trim() : apellido(j.getNombre());
     }
 
     public static String apellido(String nombre) {

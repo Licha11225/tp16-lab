@@ -1,18 +1,22 @@
 package ui;
 
-import arcade.Partido;
-import model.onceideal;
-import service.juegoservice;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
 import java.awt.CardLayout;
 import java.awt.Dimension;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+
+import arcade.Partido;
+import arcade.Torneo;
+import model.onceideal;
+import service.juegoservice;
 
 public class VentanaPrincipal extends JFrame {
 
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
+    private final juegoservice service;
 
     private final PanelInicio inicio;
     private final PanelArmar11 armar;
@@ -21,9 +25,11 @@ public class VentanaPrincipal extends JFrame {
 
     private String nombreDT = "DT";
     private onceideal onceActual;
+    private Torneo torneo;
 
     public VentanaPrincipal(juegoservice service, String estadoDatos) {
         super("Fútbol 11 Arcade");
+        this.service = service;
         inicio = new PanelInicio(this, estadoDatos);
         armar = new PanelArmar11(this, service);
         partido = new PanelPartido(this);
@@ -55,18 +61,36 @@ public class VentanaPrincipal extends JFrame {
         cards.show(root, "armar");
     }
 
+    /** Arranca una eliminatoria nueva (3 rivales de la BDD) con este 11. */
     public void irAPartido(onceideal once) {
         onceActual = once;
-        partido.iniciar(nombreDT, once);
+        try {
+            torneo = service.crearTorneo();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo armar la eliminatoria:\n" + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        jugarFase();
+    }
+
+    private void jugarFase() {
+        partido.iniciar(nombreDT, onceActual, torneo);
         cards.show(root, "partido");
     }
 
+    public void siguienteFase() {
+        jugarFase();
+    }
+
+    /** Nueva eliminatoria con el mismo 11. */
     public void revancha() {
         irAPartido(onceActual);
     }
 
     public void irAFinal(Partido p) {
-        fin.mostrar(nombreDT, p);
+        torneo.registrar(p);
+        fin.mostrar(nombreDT, p, torneo);
         cards.show(root, "final");
     }
 }

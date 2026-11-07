@@ -2,6 +2,7 @@ package daoimpl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import dao.jugadorDAO;
 import model.jugador;
@@ -38,12 +39,11 @@ public class jugadordaomemoria implements jugadorDAO {
     }
     @Override
     public List<jugador> obtenerJugadoresUnicos() {
-        // Retornamos la lista en memoria asegurando que no se repitan por ID
         List<jugador> unicos = new ArrayList<>();
         for (jugador j : jugadores) {
             boolean encontrado = false;
             for (jugador u : unicos) {
-                if (u.getId() == j.getId()) {
+                if (Objects.equals(u.getId(), j.getId())) {
                     encontrado = true;
                     break;
                 }
