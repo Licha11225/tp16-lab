@@ -18,9 +18,9 @@ import static arcade.Formacion.PROPIA;
 import static arcade.Formacion.RB;
 import static arcade.Formacion.RW;
 import static arcade.Formacion.ST;
-import model.arquero;
-import model.club;
-import model.jugador;
+import model.Arquero;
+import model.Club;
+import model.Jugador;
 
 
 public class Partido {
@@ -38,7 +38,7 @@ public class Partido {
 
     private final Random rnd = new Random();
     private final String nombreDT;
-    private final jugador[] once = new jugador[11];
+    private final Jugador[] once = new Jugador[11];
     private final int[] rating = new int[11];
 
     private final String rival;
@@ -63,7 +63,7 @@ public class Partido {
      * @param plantelRival sus jugadores: de ahí sale su nivel por línea y quién patea
      * @param bonusRival  dificultad extra para las rondas avanzadas
      */
-    public Partido(String nombreDT, List<jugador> alineacion, club rivalClub, List<jugador> plantelRival, int bonusRival) {
+    public Partido(String nombreDT, List<Jugador> alineacion, Club rivalClub, List<Jugador> plantelRival, int bonusRival) {
         this.nombreDT = nombreDT;
         for (int i = 0; i < 11; i++) {
             once[i] = alineacion.get(i);
@@ -76,18 +76,18 @@ public class Partido {
         rivAtaque = fuerza(plantelRival, 3, 3, bonusRival);
 
         boolean adelantado = rnd.nextBoolean();
-        jugador mejorArq = null;
-        for (jugador j : plantelRival) {
-            if (j instanceof arquero && (mejorArq == null || Ratings.de(j) > Ratings.de(mejorArq))) mejorArq = j;
+        Jugador mejorArq = null;
+        for (Jugador j : plantelRival) {
+            if (j instanceof Arquero && (mejorArq == null || Ratings.de(j) > Ratings.de(mejorArq))) mejorArq = j;
         }
-        if (mejorArq != null) adelantado = ((arquero) mejorArq).getJuegaAdelantado();
+        if (mejorArq != null) adelantado = ((Arquero) mejorArq).getJuegaAdelantado();
         rivArqueroAdelantado = adelantado;
 
-        List<jugador> ofensivos = new ArrayList<>();
-        for (jugador j : plantelRival) {
+        List<Jugador> ofensivos = new ArrayList<>();
+        for (Jugador j : plantelRival) {
             if (Ratings.orden(j) >= 2) ofensivos.add(j);
         }
-        ofensivos.sort(Comparator.comparingInt((jugador j) -> -Ratings.orden(j)).thenComparingInt(j -> -Ratings.de(j)));
+        ofensivos.sort(Comparator.comparingInt((Jugador j) -> -Ratings.orden(j)).thenComparingInt(j -> -Ratings.de(j)));
         for (int i = 0; i < ofensivos.size() && tiradoresRival.size() < 6; i++) {
             tiradoresRival.add(Ratings.corto(ofensivos.get(i)));
         }
@@ -105,9 +105,9 @@ public class Partido {
     }
 
     // Promedio de los mejores `cuantos` de una línea (0 arq, 1 def, 2 medio, 3 del) + bonus.
-    private static int fuerza(List<jugador> plantel, int linea, int cuantos, int bonus) {
+    private static int fuerza(List<Jugador> plantel, int linea, int cuantos, int bonus) {
         List<Integer> r = new ArrayList<>();
-        for (jugador j : plantel) {
+        for (Jugador j : plantel) {
             if (Ratings.orden(j) == linea) r.add(Ratings.de(j));
         }
         if (r.isEmpty()) return Math.min(99, 76 + bonus);

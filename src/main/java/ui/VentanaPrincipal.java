@@ -9,14 +9,14 @@ import javax.swing.JPanel;
 
 import arcade.Partido;
 import arcade.Torneo;
-import model.onceideal;
-import service.juegoservice;
+import model.Onceideal;
+import service.Juegoservice;
 
 public class VentanaPrincipal extends JFrame {
 
     private final CardLayout cards = new CardLayout();
     private final JPanel root = new JPanel(cards);
-    private final juegoservice service;
+    private final Juegoservice service;
 
     private final PanelInicio inicio;
     private final PanelArmar11 armar;
@@ -24,10 +24,10 @@ public class VentanaPrincipal extends JFrame {
     private final PanelFinal fin;
 
     private String nombreDT = "DT";
-    private onceideal onceActual;
+    private Onceideal onceActual;
     private Torneo torneo;
 
-    public VentanaPrincipal(juegoservice service, String estadoDatos) {
+    public VentanaPrincipal(Juegoservice service, String estadoDatos) {
         super("Fútbol 11 Arcade");
         this.service = service;
         inicio = new PanelInicio(this, estadoDatos);
@@ -62,7 +62,7 @@ public class VentanaPrincipal extends JFrame {
     }
 
     /** Arranca una eliminatoria nueva (3 rivales de la BDD) con este 11. */
-    public void irAPartido(onceideal once) {
+    public void irAPartido(Onceideal once) {
         onceActual = once;
         try {
             torneo = service.crearTorneo();

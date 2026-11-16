@@ -6,13 +6,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import config.ConexionBD;
-import dao.clubDAO;
-import model.club;
+import dao.ClubDAO;
+import model.Club;
 
-public class clubdaoimpl implements clubDAO {
+public class Clubdaoimpl implements ClubDAO {
 
     @Override
-    public club obtenerAleatorio() throws SQLException {
+    public Club obtenerAleatorio() throws SQLException {
         String sql = "SELECT * FROM club ORDER BY RAND() LIMIT 1";
 
         try (Connection conn = ConexionBD.getConexion();
@@ -21,14 +21,14 @@ public class clubdaoimpl implements clubDAO {
 
             if (rs.next()) {
 
-                return new club(rs.getInt("id"), rs.getString("nombre"), ""); // Cambiado de Club a club
+                return new Club(rs.getInt("id"), rs.getString("nombre"), ""); // Cambiado de Club a club
             }
         }
         return null; 
     }
 
     @Override
-    public club buscarPorId(int id) throws SQLException { 
+    public Club buscarPorId(int id) throws SQLException { 
         String sql = "SELECT * FROM club WHERE id = ?";
 
         try (Connection conn = ConexionBD.getConexion();
@@ -38,7 +38,7 @@ public class clubdaoimpl implements clubDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new club(rs.getInt("id"), rs.getString("nombre"), ""); 
+                    return new Club(rs.getInt("id"), rs.getString("nombre"), ""); 
                 }
             }
         }

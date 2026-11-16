@@ -3,22 +3,22 @@ package daoimpl;
 import java.util.List;
 import java.util.Random;
 
-import dao.clubDAO;
-import model.club;
+import dao.ClubDAO;
+import model.Club;
 
-public class clubdaomemoria implements clubDAO {
+public class Clubdaomemoria implements ClubDAO {
 
-    private final List<club> clubes = DatosDemo.clubes();
+    private final List<Club> clubes = DatosDemo.clubes();
     private final Random rnd = new Random();
 
     @Override
-    public club obtenerAleatorio() {
+    public Club obtenerAleatorio() {
         return clubes.get(rnd.nextInt(clubes.size()));
     }
 
     @Override
-    public club buscarPorId(int id) {
-        for (club c : clubes) {
+    public Club buscarPorId(int id) {
+        for (Club c : clubes) {
             if (c.getId() == id) return c;
         }
         return null;

@@ -1,9 +1,9 @@
 package model;
 
-public class mediocampista extends jugador {
+public class Mediocampista extends Jugador {
     private boolean es5;
 
-    public mediocampista(int id, String nombre, String apellido, int clubId, boolean es5) {
+    public Mediocampista(int id, String nombre, String apellido, int clubId, boolean es5) {
         super(id, nombre, apellido, clubId);
         this.es5 = es5;
     }

@@ -7,14 +7,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import config.ConexionBD;
-import dao.onceidealDAO;
-import model.jugador;
-import model.onceideal;
+import dao.OnceidealDAO;
+import model.Jugador;
+import model.Onceideal;
 
-public class onceidealdaoimpl implements onceidealDAO {
+public class Onceidealdaoimpl implements OnceidealDAO {
 
     @Override
-    public void insertarOnce(onceideal once) throws SQLException {
+    public void insertarOnce(Onceideal once) throws SQLException {
         String sqlOnce = "INSERT INTO once_guardado (usuario) VALUES (?)";
         String sqlDetalle = "INSERT INTO once_jugador (once_id, jugador_id) VALUES (?, ?)";
 
@@ -40,9 +40,9 @@ public class onceidealdaoimpl implements onceidealDAO {
 
             try (PreparedStatement psDetalle = conn.prepareStatement(sqlDetalle)) {
                 
-                for (jugador jugador : once.getListaJugadores()) {
+                for (Jugador Jugador : once.getListaJugadores()) {
                     psDetalle.setInt(1, once.getId());      
-                    psDetalle.setInt(2, jugador.getId());    
+                    psDetalle.setInt(2, Jugador.getId());    
                     psDetalle.addBatch();                    
                 }
                 psDetalle.executeBatch(); 

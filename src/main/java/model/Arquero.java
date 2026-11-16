@@ -1,11 +1,11 @@
 package model;
 
-public class arquero extends jugador {
+public class Arquero extends Jugador {
     private boolean juegaAdelantado;
 
   
 
-    public arquero(int id, String nombre, String apellido, int clubId, boolean juegaAdelantado) {
+    public Arquero(int id, String nombre, String apellido, int clubId, boolean juegaAdelantado) {
         super(id, nombre, apellido, clubId);
         this.juegaAdelantado = juegaAdelantado;
     }

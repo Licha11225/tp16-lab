@@ -3,12 +3,12 @@ package daoimpl;
 import java.util.ArrayList;
 import java.util.List;
 
-import model.arquero;
-import model.club;
-import model.defensor;
-import model.delantero;
-import model.jugador;
-import model.mediocampista;
+import model.Arquero;
+import model.Club;
+import model.Defensor;
+import model.Delantero;
+import model.Jugador;
+import model.Mediocampista;
 
 public final class DatosDemo {
 
@@ -26,16 +26,16 @@ public final class DatosDemo {
     private DatosDemo() {
     }
 
-    public static List<club> clubes() {
-        List<club> lista = new ArrayList<>();
+    public static List<Club> clubes() {
+        List<Club> lista = new ArrayList<>();
         for (int c = 0; c < CLUBES.length; c++) {
-            lista.add(new club(c + 1, CLUBES[c], ""));
+            lista.add(new Club(c + 1, CLUBES[c], ""));
         }
         return lista;
     }
 
-    public static List<jugador> jugadores() {
-        List<jugador> lista = new ArrayList<>();
+    public static List<Jugador> jugadores() {
+        List<Jugador> lista = new ArrayList<>();
         for (int c = 0; c < CLUBES.length; c++) {
             for (int k = 0; k < 11; k++) {
                 int n = c * 11 + k;
@@ -47,15 +47,15 @@ public final class DatosDemo {
                 int clubId = c + 1;
                 
                 String[] pos = {"GK", "LB", "CB", "CB", "RB", "MCD", "MC", "MCO", "LW", "ST", "RW"};
-                jugador j;
+                Jugador j;
                 if (k == 0) {
-                    j = new arquero(id, nombre, apellido, clubId, n % 3 == 0);
+                    j = new Arquero(id, nombre, apellido, clubId, n % 3 == 0);
                 } else if (k <= 4) {
-                    j = new defensor(id, nombre, apellido, clubId, k == 2 || k == 3);
+                    j = new Defensor(id, nombre, apellido, clubId, k == 2 || k == 3);
                 } else if (k <= 7) {
-                    j = new mediocampista(id, nombre, apellido, clubId, k == 5);
+                    j = new Mediocampista(id, nombre, apellido, clubId, k == 5);
                 } else {
-                    j = new delantero(id, nombre, apellido, clubId, k == 9);
+                    j = new Delantero(id, nombre, apellido, clubId, k == 9);
                 }
                 j.agregarPosicion(pos[k]);
                 if (k == 6) j.agregarPosicion("MCD");   // algunos juegan en más de un puesto, como en la BDD

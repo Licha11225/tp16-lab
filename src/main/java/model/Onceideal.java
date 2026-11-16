@@ -5,18 +5,18 @@ import java.util.List;
 
 import arcade.Formacion;
 
-public class onceideal {
+public class Onceideal {
     private int id;
     private String nombreUsuario;
-    private List<jugador> listaJugadores = new ArrayList<>();
+    private List<Jugador> listaJugadores = new ArrayList<>();
 
-    public onceideal() {
+    public Onceideal() {
         for (int i = 0; i < 11; i++) {
             listaJugadores.add(null);
         }
     }
 
-    public onceideal(String nombreUsuario, List<jugador> listaJugadores) {
+    public Onceideal(String nombreUsuario, List<Jugador> listaJugadores) {
         this.nombreUsuario = nombreUsuario;
         if (listaJugadores != null) {
             this.listaJugadores = listaJugadores;
@@ -44,18 +44,18 @@ public class onceideal {
         this.nombreUsuario = nombreUsuario;
     }
 
-    public List<jugador> getListaJugadores() {
+    public List<Jugador> getListaJugadores() {
         return listaJugadores;
     }
 
-    public void setListaJugadores(List<jugador> listaJugadores) {
+    public void setListaJugadores(List<Jugador> listaJugadores) {
         this.listaJugadores = listaJugadores;
     }
 
     /**
      * Ubica al jugador en el índice exacto de la formación (0 al 10) según el casillero.
      */
-    public void agregarJugadorEnCasillero(String casillero, jugador j) {
+    public void agregarJugadorEnCasillero(String casillero, Jugador j) {
         if (this.listaJugadores == null || this.listaJugadores.size() < 11) {
             this.listaJugadores = new ArrayList<>();
             for (int i = 0; i < 11; i++) {
@@ -71,7 +71,7 @@ public class onceideal {
         }
     }
 
-    public void agregarJugador(jugador j) {
+    public void agregarJugador(Jugador j) {
         if (this.listaJugadores == null) {
             this.listaJugadores = new ArrayList<>();
             for (int i = 0; i < 11; i++) {

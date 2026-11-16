@@ -3,7 +3,7 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class jugador implements alineable {
+public abstract class Jugador implements Alineable {
     private int id;
     private String nombre;
     private int clubId;
@@ -11,7 +11,7 @@ public abstract class jugador implements alineable {
     
     private final List<String> posicionesPermitidas = new ArrayList<>();
 
-    public jugador(int id, String nombre, String apellido, int clubId) {
+    public Jugador(int id, String nombre, String apellido, int clubId) {
         this.id = id;
         this.nombre = nombre;
         this.clubId = clubId;

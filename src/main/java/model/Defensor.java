@@ -1,11 +1,11 @@
 package model;
 
-public class defensor extends jugador {
+public class Defensor extends Jugador {
     private boolean esZagueroCentral;
 
     
 
-    public defensor(int id, String nombre, String apellido, int clubId, boolean esZagueroCentral) {
+    public Defensor(int id, String nombre, String apellido, int clubId, boolean esZagueroCentral) {
         super(id, nombre, apellido, clubId);
         this.esZagueroCentral = esZagueroCentral;
 

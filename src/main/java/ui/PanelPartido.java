@@ -21,7 +21,7 @@ import arcade.Ratings;
 import arcade.Resultado;
 import arcade.Situacion;
 import arcade.Torneo;
-import model.onceideal;
+import model.Onceideal;
 
 public class PanelPartido extends JPanel {
 
@@ -120,7 +120,7 @@ public class PanelPartido extends JPanel {
         add(sur, BorderLayout.SOUTH);
     }
 
-    public void iniciar(String nombreDT, onceideal once, Torneo torneo) {
+    public void iniciar(String nombreDT, Onceideal once, Torneo torneo) {
         this.torneo = torneo;
         partido = torneo.nuevoPartido(nombreDT, once.getListaJugadores());
         idx = 0;

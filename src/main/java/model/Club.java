@@ -1,13 +1,13 @@
 package model;
 
-public class club {
+public class Club {
     private int id;
     private String nombre;
     private String liga;
 
    
 
-    public club(int id, String nombre, String liga) {
+    public Club(int id, String nombre, String liga) {
         this.id = id;
         this.nombre = nombre;
         this.liga = liga;

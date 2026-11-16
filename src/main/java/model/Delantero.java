@@ -1,9 +1,9 @@
 package model;
 
-public class delantero extends jugador {
+public class Delantero extends Jugador {
     private boolean es9;
 
-    public delantero(int id, String nombre, String apellido, int clubId, boolean es9) {
+    public Delantero(int id, String nombre, String apellido, int clubId, boolean es9) {
         super(id, nombre, apellido, clubId);
         this.es9 = es9;
     }

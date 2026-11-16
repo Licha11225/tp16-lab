@@ -3,26 +3,26 @@ package arcade;
 import java.util.ArrayList;
 import java.util.List;
 
-import model.club;
-import model.jugador;
+import model.Club;
+import model.Jugador;
 
 public class Torneo {
 
     public static final String[] FASES = {"CUARTOS DE FINAL", "SEMIFINAL", "FINAL"};
 
-    private final List<club> rivales;
-    private final List<List<jugador>> planteles;
+    private final List<Club> rivales;
+    private final List<List<Jugador>> planteles;
     private final List<String> resultados = new ArrayList<>();
     private int fase = 0;
     private boolean eliminado = false;
     private boolean campeon = false;
 
-    public Torneo(List<club> rivales, List<List<jugador>> planteles) {
+    public Torneo(List<Club> rivales, List<List<Jugador>> planteles) {
         this.rivales = rivales;
         this.planteles = planteles;
     }
 
-    public Partido nuevoPartido(String nombreDT, List<jugador> once) {
+    public Partido nuevoPartido(String nombreDT, List<Jugador> once) {
         return new Partido(nombreDT, once, rivales.get(fase), planteles.get(fase), fase * 2);
     }
 

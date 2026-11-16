@@ -1,6 +1,6 @@
 package model;
 
-public interface alineable {
+public interface Alineable {
 	boolean esUbicacionValida(String posicionCasillero);
 
 	

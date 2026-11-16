@@ -6,56 +6,56 @@ import java.util.List;
 
 import arcade.Ratings;
 import arcade.Torneo;
-import dao.clubDAO;
-import dao.jugadorDAO;
-import dao.onceidealDAO;
+import dao.ClubDAO;
+import dao.JugadorDAO;
+import dao.OnceidealDAO;
 import exception.ClubIncorrectoException;
 import exception.EntradaVaciaException;
 import exception.JugadorDuplicadoException;
 import exception.JugadorNoEncontradoException;
 import exception.PosicionInvalidaException;
-import model.alineable;
-import model.club;
-import model.jugador;
-import model.onceideal;
+import model.Alineable;
+import model.Club;
+import model.Jugador;
+import model.Onceideal;
 
-public class juegoservice {
+public class Juegoservice {
     
-    private final jugadorDAO jugadorDAO;
-    private final clubDAO clubDAO;
-    private final onceidealDAO onceIdealDAO;
+    private final JugadorDAO JugadorDAO;
+    private final ClubDAO ClubDAO;
+    private final OnceidealDAO onceIdealDAO;
 
     // Constructor para inyectar los DAOs
-    public juegoservice(jugadorDAO jugadorDAO, clubDAO clubDAO, onceidealDAO onceIdealDAO) {
-        this.jugadorDAO = jugadorDAO;
-        this.clubDAO = clubDAO;
+    public Juegoservice(JugadorDAO JugadorDAO, ClubDAO ClubDAO, OnceidealDAO onceIdealDAO) {
+        this.JugadorDAO = JugadorDAO;
+        this.ClubDAO = ClubDAO;
         this.onceIdealDAO = onceIdealDAO;
     }
 
-    public club sortearClubAleatorio() throws Exception {
-        return clubDAO.obtenerAleatorio(); 
+    public Club sortearClubAleatorio() throws Exception {
+        return ClubDAO.obtenerAleatorio(); 
     }
 
-    public List<jugador> listarJugadoresDeClub(int clubId) throws Exception {
-        List<jugador> resultado = new ArrayList<>();
-        for (jugador j : jugadorDAO.listarTodos()) {
+    public List<Jugador> listarJugadoresDeClub(int clubId) throws Exception {
+        List<Jugador> resultado = new ArrayList<>();
+        for (Jugador j : JugadorDAO.listarTodos()) {
             if (j.getClubId() != null && j.getClubId().equals(clubId)) {
                 resultado.add(j);
             }
         }
-        resultado.sort(Comparator.comparingInt(Ratings::orden).thenComparing(jugador::getNombre));
+        resultado.sort(Comparator.comparingInt(Ratings::orden).thenComparing(Jugador::getNombre));
         return resultado;
     }
 
     public Torneo crearTorneo() throws Exception {
-        List<club> rivales = new ArrayList<>();
-        List<List<jugador>> planteles = new ArrayList<>();
+        List<Club> rivales = new ArrayList<>();
+        List<List<Jugador>> planteles = new ArrayList<>();
         int intentos = 0;
         while (rivales.size() < Torneo.FASES.length && intentos++ < 100) {
-            club c = clubDAO.obtenerAleatorio();
+            Club c = ClubDAO.obtenerAleatorio();
             if (c == null) break;
             boolean repetido = false;
-            for (club r : rivales) {
+            for (Club r : rivales) {
                 if (r.getId() == c.getId()) repetido = true;
             }
             if (repetido) continue;
@@ -72,30 +72,30 @@ public class juegoservice {
         return new Torneo(rivales, planteles);
     }
 
-    public jugador buscarJugadorPorNombre(String nombre) throws EntradaVaciaException, JugadorNoEncontradoException, Exception {
+    public Jugador buscarJugadorPorNombre(String nombre) throws EntradaVaciaException, JugadorNoEncontradoException, Exception {
         if (nombre == null || nombre.trim().isEmpty()) {
             throw new EntradaVaciaException("Debe ingresar el nombre de un jugador. El campo no puede estar vacío.");
         }
 
-        jugador jugador = jugadorDAO.buscarPorNombre(nombre);
+        Jugador Jugador = JugadorDAO.buscarPorNombre(nombre);
 
-        if (jugador == null) {
+        if (Jugador == null) {
             throw new JugadorNoEncontradoException("El jugador '" + nombre + "' no existe en los registros.");
         }
 
-        return jugador;
+        return Jugador;
     }
 
-    public void agregarJugadorAOnce(onceideal once, alineable jugador, club clubTurno, String casillero) 
+    public void agregarJugadorAOnce(Onceideal once, Alineable jugador, Club clubTurno, String casillero) 
             throws ClubIncorrectoException, JugadorDuplicadoException, PosicionInvalidaException {
         
-        jugador ficha = (jugador) jugador;
+        Jugador ficha = (Jugador) jugador;
 
         if (!ficha.getClubId().equals(clubTurno.getId())) {
             throw new ClubIncorrectoException("El jugador " + ficha.getNombre() + " no pertenece a " + clubTurno.getNombre());
         }
 
-        for (jugador j : once.getListaJugadores()) {
+        for (Jugador j : once.getListaJugadores()) {
             if (j == null || !j.getId().equals(ficha.getId())) {
             } else {
                 throw new JugadorDuplicadoException(ficha.getNombre() + " ya fue agregado a tu 11. No podés repetirlo.");
@@ -109,11 +109,11 @@ public class juegoservice {
         once.agregarJugador(ficha);
     }
 
-    public boolean validarAlineacionCompleta(onceideal once) {
+    public boolean validarAlineacionCompleta(Onceideal once) {
         return once.getListaJugadores().size() == 11;
     }
 
-    public void guardarOnceDefinitivo(onceideal once) throws Exception {
+    public void guardarOnceDefinitivo(Onceideal once) throws Exception {
         if (!validarAlineacionCompleta(once)) {
             throw new Exception("Fallo al guardar: El equipo no está completo. Faltan jugadores.");
         }

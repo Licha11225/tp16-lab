@@ -10,16 +10,16 @@ import javax.swing.UIManager;
 import com.formdev.flatlaf.FlatDarkLaf;
 
 import config.ConexionBD;
-import dao.clubDAO;
-import dao.jugadorDAO;
-import dao.onceidealDAO;
-import daoimpl.clubdaoimpl;
-import daoimpl.clubdaomemoria;
-import daoimpl.jugadordaoimpl;
-import daoimpl.jugadordaomemoria;
-import daoimpl.onceidealdaoimpl;
-import daoimpl.onceidealdaomemoria;
-import service.juegoservice;
+import dao.ClubDAO;
+import dao.JugadorDAO;
+import dao.OnceidealDAO;
+import daoimpl.Clubdaoimpl;
+import daoimpl.Clubdaomemoria;
+import daoimpl.Jugadordaoimpl;
+import daoimpl.Jugadordaomemoria;
+import daoimpl.Onceidealdaoimpl;
+import daoimpl.Onceidealdaomemoria;
+import service.Juegoservice;
 import ui.VentanaPrincipal;
 
 public class Main {
@@ -33,22 +33,22 @@ public class Main {
         UIManager.put("TextComponent.arc", 14);
 
         boolean hayBD = hayBaseDeDatos();
-        clubDAO clubes;
-        jugadorDAO jugadores;
-        onceidealDAO onces;
+        ClubDAO clubes;
+        JugadorDAO jugadores;
+        OnceidealDAO onces;
         String estado;
         if (hayBD) {
-            clubes = new clubdaoimpl();
-            jugadores = new jugadordaoimpl();
-            onces = new onceidealdaoimpl();
+            clubes = new Clubdaoimpl();
+            jugadores = new Jugadordaoimpl();
+            onces = new Onceidealdaoimpl();
             estado = "Datos: base de datos MySQL";
         } else {
-            clubes = new clubdaomemoria();
-            jugadores = new jugadordaomemoria();
-            onces = new onceidealdaomemoria();
+            clubes = new Clubdaomemoria();
+            jugadores = new Jugadordaomemoria();
+            onces = new Onceidealdaomemoria();
             estado = "Datos: modo demo (sin MySQL, jugadores de ejemplo)";
         }
-        juegoservice service = new juegoservice(jugadores, clubes, onces);
+        Juegoservice service = new Juegoservice(jugadores, clubes, onces);
 
         SwingUtilities.invokeLater(() -> new VentanaPrincipal(service, estado).setVisible(true));
     }
@@ -60,7 +60,7 @@ public class Main {
             try (Connection c = ConexionBD.getConexion()) {
                 if (c == null) return false;
             }
-            return new clubdaoimpl().obtenerAleatorio() != null;
+            return new Clubdaoimpl().obtenerAleatorio() != null;
         } catch (Exception | LinkageError e) {
             return false;
         }
