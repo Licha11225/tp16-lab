@@ -45,7 +45,8 @@ public class PanelArmar11 extends JPanel {
     private final JLabel lblError = new JLabel(" ");
     
     private final JTextField txtBuscarJugador = new JTextField();
-    private final JComboBox<String> comboPosicionesLibres;
+    private JComboBox<String> comboPosicionesLibres;
+    private final JComboBox<String> comboFormacion = new JComboBox<>(Formacion.nombresDisponibles());
     
     private final JButton btnPartido = new JButton("¡A JUGAR LA ELIMINATORIA!");
     private final JButton btnOtroClub = new JButton("Sortear otro club");
@@ -80,7 +81,19 @@ public class PanelArmar11 extends JPanel {
         lblClub.setForeground(new Color(0x56ccf2));
         lblError.setForeground(new Color(0xff6b6b));
 
-        // Selector libre con las 11 posiciones tácticas
+        // La formación se elige antes de empezar a ocupar casilleros.
+        comboFormacion.setSelectedItem(Formacion.getActual());
+        comboFormacion.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        comboFormacion.addActionListener(e -> {
+            if (jugadoresAlineadosCount > 0) return;
+            Formacion.setActual((String) comboFormacion.getSelectedItem());
+            comboPosicionesLibres.removeAllItems();
+            for (String etiqueta : Formacion.ETIQUETAS) comboPosicionesLibres.addItem(etiqueta);
+            comboPosicionesLibres.setSelectedIndex(0);
+            cancha.repaint();
+        });
+
+        // Selector libre con las 11 posiciones de la formación elegida.
         comboPosicionesLibres = new JComboBox<>(Formacion.ETIQUETAS);
         comboPosicionesLibres.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         comboPosicionesLibres.addItemListener(e -> {
@@ -171,6 +184,9 @@ public class PanelArmar11 extends JPanel {
         lateral.add(lblClub);
         lateral.add(Box.createVerticalStrut(12));
         
+        lateral.add(new JLabel("Formación táctica:"));
+        lateral.add(comboFormacion);
+        lateral.add(Box.createVerticalStrut(8));
         lateral.add(new JLabel("Elegir Posición a Llenar:"));
         lateral.add(comboPosicionesLibres);
         lateral.add(Box.createVerticalStrut(8));
@@ -189,6 +205,8 @@ public class PanelArmar11 extends JPanel {
     public void iniciar(String nombreDT) {
         once = new Onceideal();
         once.setNombreUsuario(nombreDT);
+        comboFormacion.setSelectedItem(Formacion.getActual());
+        comboFormacion.setEnabled(true);
         jugadoresAlineadosCount = 0;
         for (int i = 0; i < 11; i++) {
             casillerosOcupados[i] = false;
@@ -213,6 +231,7 @@ public class PanelArmar11 extends JPanel {
         popupSugerencias.setVisible(false);
 
         if (jugadoresAlineadosCount >= 11) {
+            comboFormacion.setEnabled(false);
             cancha.setResaltado(-1);
             lblTurno.setText("¡Equipo completo!");
             lblClub.setText("—");
@@ -366,6 +385,7 @@ public class PanelArmar11 extends JPanel {
             cancha.setNombre(posIndex, Ratings.corto(elegido));
             
             jugadoresAlineadosCount++;
+            if (jugadoresAlineadosCount == 1) comboFormacion.setEnabled(false);
             txtBuscarJugador.setText("");
             popupSugerencias.setVisible(false);
             

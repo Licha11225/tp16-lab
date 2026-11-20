@@ -491,18 +491,33 @@ public class CanchaPanel extends JPanel {
         int pyb = py - (int) Math.round(alt);
         double esc = 1 + alt / 90.0;
         int rad = (int) Math.round(7 * esc);
-        g.setColor(Color.WHITE);
-        g.fillOval(px - rad, pyb - rad, rad * 2, rad * 2);
-        g.setColor(new Color(0x222222));
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(px - rad, pyb - rad, rad * 2, rad * 2);
-        // gajos que giran
-        for (int k = 0; k < 3; k++) {
-            double a = giro + k * 2.094;
-            int ox = (int) Math.round(Math.cos(a) * rad * 0.5);
-            int oy = (int) Math.round(Math.sin(a) * rad * 0.5);
-            g.fillOval(px + ox - 2, pyb + oy - 2, 4, 4);
+        // Pelota pixel-art inspirada en el sprite de referencia adjunto.
+        String[] sprite = {
+                "...WW...",
+                "..WBBW..",
+                ".WBBBBW.",
+                "WBBWWBBW",
+                "WBBWWBBW",
+                ".WBBBBW.",
+                "..WBBW..",
+                "...WW..."
+        };
+        int celda = Math.max(2, rad / 4);
+        int ancho = sprite[0].length() * celda;
+        int alto = sprite.length * celda;
+        int ox = px - ancho / 2;
+        int oy = pyb - alto / 2;
+        for (int fila = 0; fila < sprite.length; fila++) {
+            for (int col = 0; col < sprite[fila].length(); col++) {
+                char pixel = sprite[fila].charAt(col);
+                if (pixel == '.') continue;
+                g.setColor(pixel == 'W' ? Color.WHITE : new Color(0x111827));
+                g.fillRect(ox + col * celda, oy + fila * celda, celda, celda);
+            }
         }
+        g.setColor(new Color(0x111827));
+        g.setStroke(new BasicStroke(1f));
+        g.drawRect(ox, oy, ancho, alto);
 
         if (etiqueta != null && !etiqueta.isEmpty()) {
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));

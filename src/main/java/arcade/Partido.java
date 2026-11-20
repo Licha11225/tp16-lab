@@ -55,7 +55,8 @@ public class Partido {
     private int golesFavor, golesContra;
     private double impulso;      
     private int tirador = ST; 
-    private int zonaDebil;      
+    private int zonaDebil;
+    private int potenciaActual = 70;      
 
     /**
      * @param alineacion  11 jugadores EN ORDEN DE CASILLERO
@@ -98,7 +99,8 @@ public class Partido {
         jugadas.add(TipoJugada.DEFENSA);
         jugadas.add(TipoJugada.CONTRAGOLPE);
         List<TipoJugada> especiales = new ArrayList<>(List.of(
-                TipoJugada.PENAL_FAVOR, TipoJugada.MANO_A_MANO, TipoJugada.PENAL_CONTRA, TipoJugada.ATAQUE));
+                TipoJugada.PENAL_FAVOR, TipoJugada.MANO_A_MANO, TipoJugada.PENAL_CONTRA,
+                TipoJugada.ATAQUE, TipoJugada.CORNER, TipoJugada.TIRO_LIBRE));
         Collections.shuffle(especiales, rnd);
         jugadas.add(especiales.get(0));
         jugadas.add(especiales.get(1));
@@ -170,9 +172,25 @@ public class Partido {
     public int getGolesContra() { return golesContra; }
     public List<String> getCronica() { return cronica; }
 
-    public int ataque() { return avg(LW, ST, RW, MCO); }
-    public int medio() { return avg(MCD, MC, MCO); }
-    public int defensa() { return avg(LB, CB1, CB2, RB); }
+    public int ataque() { return promedioRoles("LW", "RW", "ST", "MCO"); }
+    public int medio() { return promedioRoles("MCD", "MC", "MCO", "LM", "RM"); }
+    public int defensa() { return promedioRoles("LB", "CB", "RB"); }
+
+    /** Calcula la fuerza por líneas usando los puestos de la formación seleccionada. */
+    private int promedioRoles(String... roles) {
+        int suma = 0, cantidad = 0;
+        for (int i = 1; i < once.length; i++) {
+            String puesto = Formacion.CASILLEROS[i];
+            for (String rol : roles) {
+                if (rol.equals(puesto)) {
+                    suma += rating[i];
+                    cantidad++;
+                    break;
+                }
+            }
+        }
+        return cantidad == 0 ? 50 : suma / cantidad;
+    }
     public int arquero() { return rating[GK]; }
 
     public String resumenEquipos() {
@@ -212,6 +230,16 @@ public class Partido {
                         "Recuperaste la pelota y el rival quedó mal parado, hay espacios. ¿Cómo salís?",
                         new String[]{"Pase largo al 9", "Conducir con el 10 y definir", "Triangular con los extremos"});
             }
+            case CORNER -> {
+                return new Situacion(t, min, "¡Tiro de esquina!",
+                        "La pelota sale al córner y tenés una chance clara. Elegí cómo ejecutar la pelota parada.",
+                        new String[]{"Centro al primer palo", "Centro al segundo palo", "Jugar en corto"});
+            }
+            case TIRO_LIBRE -> {
+                return new Situacion(t, min, "¡Tiro libre!",
+                        "Tu equipo consigue una falta cerca del área. ¿Cómo buscás el arco?",
+                        new String[]{"Remate directo", "Centro al área", "Pase preparado"});
+            }
             case MANO_A_MANO -> {
                 return new Situacion(t, min, "¡Mano a mano!",
                         "¡" + ap(ST) + " queda solo ante el arquero! "
@@ -238,6 +266,11 @@ public class Partido {
 
 
     public Resultado resolver(int idx, int op) {
+        return resolver(idx, op, 70);
+    }
+
+    public Resultado resolver(int idx, int op, int potencia) {
+        potenciaActual = Math.max(20, Math.min(100, potencia));
         Resultado r;
         tirador = slotTirador(idx);
         r = switch (jugadas.get(idx)) {
@@ -245,6 +278,8 @@ public class Partido {
             case ATAQUE -> ataque(op);
             case DEFENSA -> defensa(op);
             case CONTRAGOLPE -> contragolpe(op);
+            case CORNER -> corner(op);
+            case TIRO_LIBRE -> tiroLibre(op);
             case MANO_A_MANO -> manoAMano(op);
             case PENAL_FAVOR -> penalFavor(op);
             default -> penalContra(op);
@@ -353,6 +388,30 @@ public class Partido {
         }
     }
 
+    private Resultado corner(int op) {
+        int rematador = op == 2 ? MCO : ST;
+        double chance = (op == 0 ? 0.28 : op == 1 ? 0.34 : 0.22)
+                + aj(rating[rematador], rivArquero) + aj(ataque(), rivDefensa);
+        Escena e = new Escena(0.78, op == 0 ? 0.12 : 0.88);
+        e.pase(0.88, 0.50, op == 2 ? "Córner en corto" : "Centro desde el córner");
+        if (op == 2) e.pase(0.80, 0.36, "Devolución para el centro");
+        e.pase(0.91, op == 0 ? 0.40 : 0.60, "Busca el cabezazo " + ap(rematador));
+        return rematarNuestro(e, rematador, p(chance), "Ejecutás el córner. ");
+    }
+
+    private Resultado tiroLibre(int op) {
+        if (op == 0) {
+            Escena e = new Escena(0.72, 0.50);
+            e.pase(0.84, 0.50, "Se acomoda " + ap(MCO));
+            return rematarNuestro(e, MCO, p(0.24 + aj(rating[MCO], rivArquero) + (potenciaActual - 70) * 0.002), "Vas al remate directo. ");
+        }
+        Escena e = new Escena(0.72, 0.50);
+        e.pase(0.88, op == 1 ? 0.38 : 0.62, op == 1 ? "Centro al área" : "Toque preparado");
+        if (op == 2) e.pase(0.82, 0.50, "Pase atrás para el remate");
+        return rematarNuestro(e, ST, p((op == 1 ? 0.31 : 0.27) + aj(rating[ST], rivArquero) + (potenciaActual - 70) * 0.0015),
+                op == 1 ? "Buscás un compañero en el área. " : "Preparás una jugada de laboratorio. ");
+    }
+
     private Resultado defensa(int op) {
         double pCorte;
         double pGolRival;
@@ -435,12 +494,17 @@ public class Partido {
         int tir = op - 1; // -1 arriba izquierda del pateador, 0 centro, 1 abajo
         double rr = rnd.nextDouble();
         int k = rr < 0.35 ? -1 : (rr < 0.65 ? 0 : 1); 
-        double pErrar = clamp(0.10 - (rating[tirador] - 75) * 0.003, 0.03, 0.15);
+        double pErrar = clamp(0.10 - (rating[tirador] - 75) * 0.003
+                + Math.max(0, potenciaActual - 78) * 0.0025
+                + Math.max(0, 42 - potenciaActual) * 0.0015, 0.03, 0.28);
         Escena.Fin fin;
         if (rnd.nextDouble() < pErrar) {
             fin = Escena.Fin.AFUERA;
         } else if (k == tir) {
-            double pAtaja = clamp((tir == 0 ? 0.92 : 0.72) + aj(rivArquero, rating[tirador]), 0.40, 0.95);
+            double pAtaja = clamp((tir == 0 ? 0.92 : 0.72)
+                    + aj(rivArquero, rating[tirador])
+                    + (potenciaActual < 45 ? 0.10 : 0)
+                    - (potenciaActual > 88 ? 0.05 : 0), 0.30, 0.97);
             fin = rnd.nextDouble() < pAtaja ? Escena.Fin.ATAJADA : Escena.Fin.GOL_FAVOR;
         } else {
             fin = Escena.Fin.GOL_FAVOR;
