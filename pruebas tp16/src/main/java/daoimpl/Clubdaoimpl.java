@@ -1,0 +1,47 @@
+package daoimpl;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet; 
+import java.sql.SQLException;
+
+import config.ConexionBD;
+import dao.ClubDAO;
+import model.Club;
+
+public class Clubdaoimpl implements ClubDAO {
+
+    @Override
+    public Club obtenerAleatorio() throws SQLException {
+        String sql = "SELECT * FROM club ORDER BY RAND() LIMIT 1";
+
+        try (Connection conn = ConexionBD.getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+
+                return new Club(rs.getInt("id"), rs.getString("nombre"), ""); // Cambiado de Club a club
+            }
+        }
+        return null; 
+    }
+
+    @Override
+    public Club buscarPorId(int id) throws SQLException { 
+        String sql = "SELECT * FROM club WHERE id = ?";
+
+        try (Connection conn = ConexionBD.getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Club(rs.getInt("id"), rs.getString("nombre"), ""); 
+                }
+            }
+        }
+        return null;
+    }
+}
