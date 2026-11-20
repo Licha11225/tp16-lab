@@ -67,7 +67,6 @@ public abstract class Jugador implements Alineable {
     public boolean esUbicacionValida(String posicionCasillero) {
         if (posicionCasillero == null) return false;
         String pos = posicionCasillero.toUpperCase().trim();
-        // Validación estricta consultando únicamente las posiciones que tiene en la BDD
         return posicionesPermitidas.contains(pos);
     }
 

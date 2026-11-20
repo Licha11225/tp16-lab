@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import arcade.Formacion;
 import arcade.Ratings;
 import arcade.Torneo;
 import dao.ClubDAO;
@@ -102,7 +103,7 @@ public class Juegoservice {
             }
         }
 
-        if (!jugador.esUbicacionValida(casillero)) {
+        if (!Formacion.sirve(ficha, casillero)) {
             throw new PosicionInvalidaException(ficha.getNombre() + " no puede ser alineado en la posición " + casillero);
         }
 
@@ -110,7 +111,11 @@ public class Juegoservice {
     }
 
     public boolean validarAlineacionCompleta(Onceideal once) {
-        return once.getListaJugadores().size() == 11;
+        int cargados = 0;
+        for (Jugador j : once.getListaJugadores()) {
+            if (j != null) cargados++;
+        }
+        return cargados == 11;
     }
 
     public void guardarOnceDefinitivo(Onceideal once) throws Exception {

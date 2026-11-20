@@ -9,5 +9,8 @@ public enum TipoJugada {
     PENAL_FAVOR,
     PENAL_CONTRA,
     CORNER,
-    TIRO_LIBRE
+    CORNER_CONTRA,
+    TIRO_LIBRE,
+    TIRO_LIBRE_CONTRA,
+    ENTRETIEMPO
 }

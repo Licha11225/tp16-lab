@@ -22,8 +22,8 @@ public class Torneo {
         this.planteles = planteles;
     }
 
-    public Partido nuevoPartido(String nombreDT, List<Jugador> once) {
-        return new Partido(nombreDT, once, rivales.get(fase), planteles.get(fase), fase * 2);
+    public Partido nuevoPartido(String nombreDT, List<Jugador> once, Formacion formacion) {
+        return new Partido(nombreDT, once, formacion, rivales.get(fase), planteles.get(fase), fase * 2);
     }
 
     public boolean registrar(Partido p) {

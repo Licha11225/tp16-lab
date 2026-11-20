@@ -1,6 +1,7 @@
 package ui;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -14,7 +15,9 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -23,6 +26,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 
 import arcade.Formacion;
 import arcade.Ratings;
@@ -45,8 +49,7 @@ public class PanelArmar11 extends JPanel {
     private final JLabel lblError = new JLabel(" ");
     
     private final JTextField txtBuscarJugador = new JTextField();
-    private JComboBox<String> comboPosicionesLibres;
-    private final JComboBox<String> comboFormacion = new JComboBox<>(Formacion.nombresDisponibles());
+    private final JComboBox<String> comboPosicionesLibres;
     
     private final JButton btnPartido = new JButton("¡A JUGAR LA ELIMINATORIA!");
     private final JButton btnOtroClub = new JButton("Sortear otro club");
@@ -56,6 +59,16 @@ public class PanelArmar11 extends JPanel {
     private final javax.swing.DefaultListModel<Jugador> modeloSugerencias = new javax.swing.DefaultListModel<>();
     private final JList<Jugador> listaSugerencias = new JList<>(modeloSugerencias);
 
+    // Paso 1: elegir la formación
+    private final CardLayout cardsLateral = new CardLayout();
+    private final JPanel contLateral = new JPanel(cardsLateral);
+    private final DefaultListModel<Formacion> modeloFormaciones = new DefaultListModel<>();
+    private final JList<Formacion> listaFormaciones = new JList<>(modeloFormaciones);
+    private final JLabel lblFormacionDesc = new JLabel(" ");
+    private Formacion formacion = Formacion.TODAS.get(0);
+    private boolean formacionConfirmada = false;
+
+    private String nombreDT = "DT";
     private Onceideal once;
     private Club clubTurno;
     private int jugadoresAlineadosCount = 0;
@@ -81,23 +94,11 @@ public class PanelArmar11 extends JPanel {
         lblClub.setForeground(new Color(0x56ccf2));
         lblError.setForeground(new Color(0xff6b6b));
 
-        // La formación se elige antes de empezar a ocupar casilleros.
-        comboFormacion.setSelectedItem(Formacion.getActual());
-        comboFormacion.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        comboFormacion.addActionListener(e -> {
-            if (jugadoresAlineadosCount > 0) return;
-            Formacion.setActual((String) comboFormacion.getSelectedItem());
-            comboPosicionesLibres.removeAllItems();
-            for (String etiqueta : Formacion.ETIQUETAS) comboPosicionesLibres.addItem(etiqueta);
-            comboPosicionesLibres.setSelectedIndex(0);
-            cancha.repaint();
-        });
-
-        // Selector libre con las 11 posiciones de la formación elegida.
-        comboPosicionesLibres = new JComboBox<>(Formacion.ETIQUETAS);
+        // Selector libre con las 11 posiciones tácticas
+        comboPosicionesLibres = new JComboBox<>(formacion.etiquetas());
         comboPosicionesLibres.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         comboPosicionesLibres.addItemListener(e -> {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
+            if (e.getStateChange() == ItemEvent.SELECTED && formacionConfirmada) {
                 int idx = comboPosicionesLibres.getSelectedIndex();
                 cancha.setResaltado(idx);
                 verificarSiSirvePosicionActual();
@@ -184,9 +185,6 @@ public class PanelArmar11 extends JPanel {
         lateral.add(lblClub);
         lateral.add(Box.createVerticalStrut(12));
         
-        lateral.add(new JLabel("Formación táctica:"));
-        lateral.add(comboFormacion);
-        lateral.add(Box.createVerticalStrut(8));
         lateral.add(new JLabel("Elegir Posición a Llenar:"));
         lateral.add(comboPosicionesLibres);
         lateral.add(Box.createVerticalStrut(8));
@@ -199,30 +197,128 @@ public class PanelArmar11 extends JPanel {
         lateral.add(btnOtroClub);
         lateral.add(Box.createVerticalStrut(6));
         lateral.add(btnPartido);
-        add(lateral, BorderLayout.EAST);
+        lateral.add(Box.createVerticalGlue());
+        JButton btnCambiarFormacion = new JButton("← Cambiar formación");
+        btnCambiarFormacion.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        btnCambiarFormacion.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnCambiarFormacion.addActionListener(e -> volverAElegirFormacion());
+        lateral.add(btnCambiarFormacion);
+
+        contLateral.setPreferredSize(new Dimension(330, 500));
+        contLateral.add(armarPanelFormacion(), "formacion");
+        contLateral.add(lateral, "armado");
+        add(contLateral, BorderLayout.EAST);
     }
 
-    public void iniciar(String nombreDT) {
+    /** Paso 1: lista de formaciones con vista previa en la cancha. */
+    private JPanel armarPanelFormacion() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+
+        JLabel titulo = new JLabel("ELEGÍ TU FORMACIÓN");
+        titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        titulo.setForeground(new Color(0xffd54f));
+        titulo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel ayuda = new JLabel("<html><div style='width:290px'>Define las posiciones de tu 11. Por ejemplo, en un "
+                + "3-5-2 jugás con 3 CB y volantes por banda (LM y RM). Mirá la vista previa en la cancha.</div></html>");
+        ayuda.setForeground(Color.GRAY);
+        ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        for (Formacion f : Formacion.TODAS) modeloFormaciones.addElement(f);
+        listaFormaciones.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listaFormaciones.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        listaFormaciones.setFixedCellHeight(30);
+        listaFormaciones.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
+            Formacion f = listaFormaciones.getSelectedValue();
+            if (f == null) return;
+            formacion = f;
+            cancha.setFormaciones(f, f);
+            cancha.limpiarNombres();
+            lblFormacionDesc.setText("<html><div style='width:290px'><b>" + f.getNombre() + "</b><br>" + f.descripcion() + "</div></html>");
+        });
+        JScrollPane scroll = new JScrollPane(listaFormaciones);
+        scroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        scroll.setPreferredSize(new Dimension(300, 260));
+
+        lblFormacionDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton btnConfirmar = new JButton("Confirmar formación");
+        btnConfirmar.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        btnConfirmar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        btnConfirmar.setBackground(new Color(0x27ae60));
+        btnConfirmar.setForeground(Color.WHITE);
+        btnConfirmar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnConfirmar.addActionListener(e -> confirmarFormacion());
+
+        p.add(titulo);
+        p.add(Box.createVerticalStrut(6));
+        p.add(ayuda);
+        p.add(Box.createVerticalStrut(10));
+        p.add(scroll);
+        p.add(Box.createVerticalStrut(10));
+        p.add(lblFormacionDesc);
+        p.add(Box.createVerticalStrut(12));
+        p.add(btnConfirmar);
+        return p;
+    }
+
+    private void confirmarFormacion() {
+        Formacion f = listaFormaciones.getSelectedValue();
+        if (f == null) return;
+        formacion = f;
+        reiniciarArmado();
+        comboPosicionesLibres.setModel(new DefaultComboBoxModel<>(formacion.etiquetas()));
+        formacionConfirmada = true;
+        comboPosicionesLibres.setSelectedIndex(0);
+        cancha.setFormaciones(formacion, formacion);
+        cancha.limpiarNombres();
+        cardsLateral.show(contLateral, "armado");
+        siguienteTurno();
+    }
+
+    private void volverAElegirFormacion() {
+        if (jugadoresAlineadosCount > 0) {
+            int r = JOptionPane.showConfirmDialog(this,
+                    "Si cambiás de formación se borran los jugadores que ya elegiste. ¿Continuar?",
+                    "Cambiar formación", JOptionPane.YES_NO_OPTION);
+            if (r != JOptionPane.YES_OPTION) return;
+        }
+        mostrarElegirFormacion();
+    }
+
+    private void mostrarElegirFormacion() {
+        formacionConfirmada = false;
+        reiniciarArmado();
+        popupSugerencias.setVisible(false);
+        cancha.limpiar();
+        cancha.setMostrarRival(false);
+        cancha.setResaltado(-1);
+        cancha.limpiarNombres();
+        listaFormaciones.setSelectedValue(formacion, true);
+        cancha.setFormaciones(formacion, formacion);
+        lblFormacionDesc.setText("<html><div style='width:290px'><b>" + formacion.getNombre() + "</b><br>" + formacion.descripcion() + "</div></html>");
+        cardsLateral.show(contLateral, "formacion");
+    }
+
+    private void reiniciarArmado() {
         once = new Onceideal();
         once.setNombreUsuario(nombreDT);
-        comboFormacion.setSelectedItem(Formacion.getActual());
-        comboFormacion.setEnabled(true);
         jugadoresAlineadosCount = 0;
         for (int i = 0; i < 11; i++) {
             casillerosOcupados[i] = false;
             porCasillero[i] = null;
         }
-        comboPosicionesLibres.setSelectedIndex(0);
+        txtBuscarJugador.setEnabled(true);
+        txtBuscarJugador.setText("");
         comboPosicionesLibres.setEnabled(true);
         btnOtroClub.setVisible(false);
-        cancha.limpiar();
-        cancha.limpiarNombres();
-        cancha.setMostrarRival(false);
-        txtBuscarJugador.setEnabled(true);
         btnPartido.setVisible(false);
-        txtBuscarJugador.setText("");
-        popupSugerencias.setVisible(false);
-        siguienteTurno();
+    }
+
+    public void iniciar(String nombreDT) {
+        this.nombreDT = nombreDT;
+        mostrarElegirFormacion();
     }
 
     private void siguienteTurno() {
@@ -231,7 +327,6 @@ public class PanelArmar11 extends JPanel {
         popupSugerencias.setVisible(false);
 
         if (jugadoresAlineadosCount >= 11) {
-            comboFormacion.setEnabled(false);
             cancha.setResaltado(-1);
             lblTurno.setText("¡Equipo completo!");
             lblClub.setText("—");
@@ -270,7 +365,7 @@ public class PanelArmar11 extends JPanel {
         for (Jugador j : jugadoresDelClubActual) {
             if (estaAlineado(j)) continue;
             for (int i = 0; i < 11; i++) {
-                if (!casillerosOcupados[i] && j.esUbicacionValida(Formacion.CASILLEROS[i])) return true;
+                if (!casillerosOcupados[i] && Formacion.sirve(j, formacion.casillero(i))) return true;
             }
         }
         return false;
@@ -372,9 +467,9 @@ public class PanelArmar11 extends JPanel {
                 throw new PosicionInvalidaException("¡Esta posición ya está ocupada! Elegí otra en el selector.");
             }
 
-            String posicionSeleccionada = Formacion.CASILLEROS[posIndex];
+            String posicionSeleccionada = formacion.casillero(posIndex);
 
-            if (!elegido.esUbicacionValida(posicionSeleccionada)) {
+            if (!Formacion.sirve(elegido, posicionSeleccionada)) {
                 throw new PosicionInvalidaException(Ratings.corto(elegido) + " no puede jugar en la posición " + posicionSeleccionada + ".");
             }
 
@@ -385,7 +480,6 @@ public class PanelArmar11 extends JPanel {
             cancha.setNombre(posIndex, Ratings.corto(elegido));
             
             jugadoresAlineadosCount++;
-            if (jugadoresAlineadosCount == 1) comboFormacion.setEnabled(false);
             txtBuscarJugador.setText("");
             popupSugerencias.setVisible(false);
             
@@ -414,6 +508,6 @@ public class PanelArmar11 extends JPanel {
                             + "\n\nIgual podés jugar el partido.",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
         }
-        v.irAPartido(once);
+        v.irAPartido(once, formacion);
     }
 }

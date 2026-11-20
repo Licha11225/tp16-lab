@@ -22,13 +22,24 @@ import javax.swing.Timer;
 import arcade.Escena;
 import arcade.Formacion;
 
+/**
+ * Cancha dibujada con Java2D. Sirve para:
+ *  - armar el 11 (formación elegida, casillero resaltado),
+ *  - mostrar el partido "en vivo" (los 22 jugadores se mueven y se pasan la pelota),
+ *  - reproducir las escenas de cada situación (pases, remates, arquero, carteles, confeti).
+ */
 public class CanchaPanel extends JPanel {
 
-    private enum Fase { QUIETO, PAUSA, MOVER, BANNER, FIN }
+    private enum Fase { QUIETO, VIVO, PAUSA, MOVER, BANNER, FIN }
 
     private static final double SALTO_ARQUERO = 0.09;
     private static final Color[] CONFETI = {
             new Color(0xffd54f), new Color(0xff5252), new Color(0x56ccf2), new Color(0x6fcf97), Color.WHITE};
+
+    private Formacion fProp = Formacion.TODAS.get(0);
+    private Formacion fRiv = Formacion.TODAS.get(0);
+    private final Vivo vivo = new Vivo();
+    private boolean modoVivo;
 
     private final String[] nombres = new String[11];
     private boolean mostrarRival = false;
@@ -41,7 +52,7 @@ public class CanchaPanel extends JPanel {
     private final Random rnd = new Random();
     private long ini, ultimoTick;
     private int tramo;
-    private double sx, sy, bx, by;
+    private double sx, sy, bx = 0.5, by = 0.5;
     private boolean verBola;
     private String etiqueta = "";
     private double kProg;
@@ -53,21 +64,30 @@ public class CanchaPanel extends JPanel {
     // efectos
     private final List<double[]> estela = new ArrayList<>();    // x, y, altura
     private final List<double[]> confeti = new ArrayList<>();   // px, py, vx, vy, rot, vrot, color, vida
-    private double alt, giro, mag, shake, flash, bannerMs, bannerDur = 1500;
+    private double alt, giro, shake, flash, bannerMs, bannerDur = 1500;
 
-    // geometría de la cancha 
+    // geometría de la cancha
     private int fx, fy, fw, fh;
 
     public CanchaPanel() {
         setPreferredSize(new Dimension(700, 430));
         setBackground(new Color(0x15181c));
+        vivo.setFormaciones(fProp.propia(), fRiv.rival());
         timer = new Timer(16, e -> tick());
         pulso = new Timer(40, e -> {
             if (!timer.isRunning()) repaint();
         });
     }
 
-    //API
+    // ------------------------------------------------------------------ API: armado
+
+    /** Formación propia y del rival (el rival puede ser null si todavía no se muestra). */
+    public void setFormaciones(Formacion propia, Formacion rival) {
+        fProp = propia;
+        fRiv = rival != null ? rival : propia;
+        vivo.setFormaciones(fProp.propia(), fRiv.rival());
+        repaint();
+    }
 
     public void setNombre(int slot, String nombre) {
         nombres[slot] = nombre;
@@ -90,6 +110,58 @@ public class CanchaPanel extends JPanel {
         repaint();
     }
 
+    // ------------------------------------------------------------------ API: partido en vivo
+
+    /** Arranca la simulación visual: los jugadores se mueven y se pasan la pelota. */
+    public void vivoIniciar() {
+        detener();
+        escena = null;
+        modoVivo = true;
+        vivo.reiniciar();
+        vivo.corriendo = true;
+        bx = vivo.bx;
+        by = vivo.by;
+        verBola = true;
+        bannerTxt = "";
+        fase = Fase.VIVO;
+        ultimoTick = System.nanoTime();
+        timer.start();
+    }
+
+    /** Congela el juego (hay que decidir algo). */
+    public void vivoPausar() {
+        vivo.corriendo = false;
+    }
+
+    public void vivoReanudar() {
+        if (!modoVivo) return;
+        vivo.corriendo = true;
+        vivo.enFormacion = false;
+        if (fase != Fase.VIVO) return;
+        verBola = true;
+    }
+
+    public void vivoDetener() {
+        modoVivo = false;
+        vivo.corriendo = false;
+        detener();
+        verBola = false;
+        repaint();
+    }
+
+    /** Cómo juega el equipo: probabilidad de conservar la pelota y tendencia al juego directo. */
+    public void setEstiloVivo(double posesion, double directo) {
+        vivo.posesion = posesion;
+        vivo.directo = directo;
+    }
+
+    /** Porcentaje de tiempo con la pelota que tuvo el usuario (0 a 1). */
+    public double getPosesionUsuario() {
+        return vivo.posesionMedida();
+    }
+
+    // ------------------------------------------------------------------ API: escenas
+
     /** Cartel a pantalla de cancha (ej. "SEMIFINAL") sin pelota; al terminar corre `fin`. */
     public void cartel(String texto, Runnable fin) {
         reproducir(new Escena(0.5, 0.5).fin(Escena.Fin.OK, texto), fin);
@@ -111,9 +183,10 @@ public class CanchaPanel extends JPanel {
         estela.clear();
         confeti.clear();
         alt = 0;
-        mag = 0;
         shake = 0;
         flash = 0;
+        vivo.enFormacion = true;        // los jugadores vuelven a su lugar y se acercan a la jugada
+        vivo.corriendo = false;
         for (int i = 0; i < e.tramos.size(); i++) {
             if (e.tramos.get(i).remate) {
                 remateIdx = i;
@@ -128,6 +201,9 @@ public class CanchaPanel extends JPanel {
     }
 
     public void limpiar() {
+        modoVivo = false;
+        vivo.corriendo = false;
+        vivo.enFormacion = false;
         detener();
         escena = null;
         verBola = false;
@@ -137,11 +213,10 @@ public class CanchaPanel extends JPanel {
         estela.clear();
         confeti.clear();
         alt = 0;
-        mag = 0;
         repaint();
     }
 
-    // animación
+    // ------------------------------------------------------------------ animación
 
     private void detener() {
         timer.stop();
@@ -149,17 +224,37 @@ public class CanchaPanel extends JPanel {
         alTerminar = null;
     }
 
+    /** Un paso de la animación (package-private para poder probarla sin ventana). */
     void tick() {
         long now = System.nanoTime();
         double ms = (now - ini) / 1_000_000.0;
         double dt = Math.min(50, (now - ultimoTick) / 1_000_000.0);
         ultimoTick = now;
 
-        mag += ((fase == Fase.MOVER ? 1.0 : 0.0) - mag) * 0.12;
         shake *= 0.90;
         flash = Math.max(0, flash - dt / 450.0);
         actualizarConfeti(dt);
-        if (fase != Fase.MOVER && !estela.isEmpty()) estela.remove(0);
+
+        boolean enEscena = fase == Fase.PAUSA || fase == Fase.MOVER || fase == Fase.BANNER;
+        if (enEscena) {
+            vivo.bx = bx;
+            vivo.by = by;
+        }
+        vivo.actualizar(dt);
+        if (fase == Fase.VIVO) {
+            bx = vivo.bx;
+            by = vivo.by;
+            alt = vivo.alt;
+            if (vivo.enVuelo()) {
+                giro += 0.45;
+                estela.add(new double[]{bx, by, alt});
+                if (estela.size() > 16) estela.remove(0);
+            } else if (!estela.isEmpty()) {
+                estela.remove(0);
+            }
+        } else if (fase != Fase.MOVER && !estela.isEmpty()) {
+            estela.remove(0);
+        }
 
         switch (fase) {
             case PAUSA -> {
@@ -200,17 +295,35 @@ public class CanchaPanel extends JPanel {
             }
             case BANNER -> {
                 bannerMs = ms;
-                if (ms >= bannerDur) {
-                    fase = Fase.FIN;
-                    timer.stop();
-                    Runnable r = alTerminar;
-                    alTerminar = null;
-                    if (r != null) r.run();
-                }
+                if (ms >= bannerDur) terminarEscena();
             }
+            case VIVO -> { }
             default -> timer.stop();
         }
         repaint();
+    }
+
+    private void terminarEscena() {
+        Runnable r = alTerminar;
+        alTerminar = null;
+        Escena.Fin fin = escena.fin;
+        bannerTxt = "";
+        kProg = 0;
+        if (modoVivo) {
+            vivo.bx = bx;
+            vivo.by = by;
+            vivo.reanudarDespuesDe(fin);   // la pelota queda donde corresponde, pero el juego sigue congelado
+            vivo.corriendo = false;
+            bx = vivo.bx;
+            by = vivo.by;
+            verBola = true;
+            escena = null;
+            fase = Fase.VIVO;
+        } else {
+            fase = Fase.FIN;
+            timer.stop();
+        }
+        if (r != null) r.run();
     }
 
     private void iniciarBanner() {
@@ -276,20 +389,10 @@ public class CanchaPanel extends JPanel {
         }
     }
 
-    // dibujo
+    // ------------------------------------------------------------------ dibujo
 
     private int X(double x) { return fx + (int) Math.round(x * fw); }
     private int Y(double y) { return fy + (int) Math.round(y * fh); }
-
-    private double[] atraer(double x, double y) {
-        if (!verBola || mag < 0.01) return new double[]{x, y};
-        double dx = bx - x, dy = by - y;
-        double d = Math.hypot(dx * 1.7, dy);
-        double radio = 0.5;
-        if (d >= radio || d < 0.001) return new double[]{x, y};
-        double w = (1 - d / radio) * 0.06 * mag;
-        return new double[]{x + (dx * 1.7 / d) * w / 1.7, y + (dy / d) * w};
-    }
 
     @Override
     protected void paintComponent(Graphics g0) {
@@ -369,58 +472,60 @@ public class CanchaPanel extends JPanel {
     private void dibujarJugadores(Graphics2D g) {
         int r = 14;
         double latido = 0.5 + 0.5 * Math.sin(System.nanoTime() / 1.2e8);
+        Font fCod = new Font(Font.SANS_SERIF, Font.BOLD, 10);
+        Font fNom = new Font(Font.SANS_SERIF, Font.BOLD, 12);
 
-        // rival
-        if (mostrarRival) {
-            for (int i = 0; i < 11; i++) {
-                double x = Formacion.RIVAL[i][0];
-                double y = Formacion.RIVAL[i][1];
-                if (i == 0) {
-                    if (escena != null && escena.hayArquero && !escena.arqueroPropio) {
-                        y += escena.arqueroLado * SALTO_ARQUERO * kProg;
-                    }
-                } else {
-                    double[] p = atraer(x, y);
-                    x = p[0];
-                    y = p[1];
-                }
-                g.setColor(new Color(0, 0, 0, 70));
-                g.fill(new Ellipse2D.Double(X(x) - r + 2, Y(y) - r + 3, 2 * r, 2 * r));
-                g.setColor(i == 0 ? new Color(0xf2994a) : new Color(0xeb5757));
-                g.fill(new Ellipse2D.Double(X(x) - r, Y(y) - r, 2 * r, 2 * r));
-                g.setColor(Color.WHITE);
-                g.setStroke(new BasicStroke(1.5f));
-                g.draw(new Ellipse2D.Double(X(x) - r, Y(y) - r, 2 * r, 2 * r));
-            }
-        }
-
-        // quién tiene la pelota
-        int poseedor = -1;
-        if (verBola && fase == Fase.MOVER) {
+        // quién tiene la pelota: en vivo lo sabe la simulación; en una escena, el propio más cercano
+        int poseedorEq = -1, poseedor = -1;
+        if (verBola && fase == Fase.VIVO && vivo.corriendo) {
+            poseedorEq = vivo.eq;
+            poseedor = vivo.idx;
+        } else if (verBola && fase == Fase.MOVER) {
             double mejor = 0.14;
             for (int i = 1; i < 11; i++) {
-                double d = Math.hypot((bx - Formacion.PROPIA[i][0]) * 1.7, by - Formacion.PROPIA[i][1]);
+                double d = Math.hypot((bx - vivo.pos[0][i][0]) * 1.7, by - vivo.pos[0][i][1]);
                 if (d < mejor) {
                     mejor = d;
+                    poseedorEq = 0;
                     poseedor = i;
                 }
             }
         }
 
-        // propios
-        Font fDot = new Font(Font.SANS_SERIF, Font.BOLD, 10);
-        Font fNom = new Font(Font.SANS_SERIF, Font.BOLD, 12);
-        for (int i = 0; i < 11; i++) {
-            double x = Formacion.PROPIA[i][0];
-            double y = Formacion.PROPIA[i][1];
-            if (i == 0) {
-                if (escena != null && escena.hayArquero && escena.arqueroPropio) {
+        // rival
+        if (mostrarRival) {
+            for (int i = 0; i < 11; i++) {
+                double x = vivo.pos[1][i][0];
+                double y = vivo.pos[1][i][1];
+                if (i == 0 && escena != null && escena.hayArquero && !escena.arqueroPropio) {
                     y += escena.arqueroLado * SALTO_ARQUERO * kProg;
                 }
-            } else {
-                double[] p = atraer(x, y);
-                x = p[0];
-                y = p[1];
+                int cx = X(x), cy = Y(y);
+                if (poseedorEq == 1 && poseedor == i) {
+                    g.setColor(new Color(255, 120, 120, 90 + (int) (latido * 120)));
+                    g.setStroke(new BasicStroke(2.5f));
+                    g.draw(new Ellipse2D.Double(cx - r - 6, cy - r - 6, 2 * r + 12, 2 * r + 12));
+                }
+                g.setColor(new Color(0, 0, 0, 70));
+                g.fill(new Ellipse2D.Double(cx - r + 2, cy - r + 3, 2 * r, 2 * r));
+                g.setColor(i == 0 ? new Color(0xf2994a) : new Color(0xeb5757));
+                g.fill(new Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r));
+                g.setColor(Color.WHITE);
+                g.setStroke(new BasicStroke(1.5f));
+                g.draw(new Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r));
+                g.setFont(fCod);
+                FontMetrics fm = g.getFontMetrics();
+                String pos = fRiv.casillero(i);
+                g.drawString(pos, cx - fm.stringWidth(pos) / 2, cy + fm.getAscent() / 2 - 1);
+            }
+        }
+
+        // propios
+        for (int i = 0; i < 11; i++) {
+            double x = vivo.pos[0][i][0];
+            double y = vivo.pos[0][i][1];
+            if (i == 0 && escena != null && escena.hayArquero && escena.arqueroPropio) {
+                y += escena.arqueroLado * SALTO_ARQUERO * kProg;
             }
             int cx = X(x), cy = Y(y);
             boolean lleno = nombres[i] != null;
@@ -431,7 +536,7 @@ public class CanchaPanel extends JPanel {
                 int rr = r + 5 + (int) Math.round(latido * 4);
                 g.draw(new Ellipse2D.Double(cx - rr, cy - rr, 2 * rr, 2 * rr));
             }
-            if (i == poseedor) {
+            if (poseedorEq == 0 && i == poseedor) {
                 g.setColor(new Color(255, 255, 255, 70 + (int) (latido * 110)));
                 g.setStroke(new BasicStroke(2.5f));
                 int rr = r + 6;
@@ -449,9 +554,9 @@ public class CanchaPanel extends JPanel {
             g.setStroke(new BasicStroke(1.5f));
             g.draw(new Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r));
 
-            g.setFont(fDot);
+            g.setFont(fCod);
             FontMetrics fm = g.getFontMetrics();
-            String pos = Formacion.CASILLEROS[i];
+            String pos = fProp.casillero(i);
             g.setColor(lleno && i == 0 ? new Color(0x222222) : Color.WHITE);
             g.drawString(pos, cx - fm.stringWidth(pos) / 2, cy + fm.getAscent() / 2 - 1);
 
@@ -483,7 +588,6 @@ public class CanchaPanel extends JPanel {
             g.fillOval(X(e[0]) - rr, Y(e[1]) - (int) e[2] - rr, rr * 2, rr * 2);
         }
 
-        // sombra en el piso (se achica y se aclara cuando la pelota sube)
         int sh = (int) Math.max(4, 14 - alt * 0.15);
         g.setColor(new Color(0, 0, 0, (int) Math.max(30, 90 - alt * 1.2)));
         g.fillOval(px - sh / 2 + 1, py - sh / 4 + 4, sh, Math.max(4, sh / 2));
@@ -491,33 +595,17 @@ public class CanchaPanel extends JPanel {
         int pyb = py - (int) Math.round(alt);
         double esc = 1 + alt / 90.0;
         int rad = (int) Math.round(7 * esc);
-        // Pelota pixel-art inspirada en el sprite de referencia adjunto.
-        String[] sprite = {
-                "...WW...",
-                "..WBBW..",
-                ".WBBBBW.",
-                "WBBWWBBW",
-                "WBBWWBBW",
-                ".WBBBBW.",
-                "..WBBW..",
-                "...WW..."
-        };
-        int celda = Math.max(2, rad / 4);
-        int ancho = sprite[0].length() * celda;
-        int alto = sprite.length * celda;
-        int ox = px - ancho / 2;
-        int oy = pyb - alto / 2;
-        for (int fila = 0; fila < sprite.length; fila++) {
-            for (int col = 0; col < sprite[fila].length(); col++) {
-                char pixel = sprite[fila].charAt(col);
-                if (pixel == '.') continue;
-                g.setColor(pixel == 'W' ? Color.WHITE : new Color(0x111827));
-                g.fillRect(ox + col * celda, oy + fila * celda, celda, celda);
-            }
+        g.setColor(Color.WHITE);
+        g.fillOval(px - rad, pyb - rad, rad * 2, rad * 2);
+        g.setColor(new Color(0x222222));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawOval(px - rad, pyb - rad, rad * 2, rad * 2);
+        for (int k = 0; k < 3; k++) {
+            double a = giro + k * 2.094;
+            int ox = (int) Math.round(Math.cos(a) * rad * 0.5);
+            int oy = (int) Math.round(Math.sin(a) * rad * 0.5);
+            g.fillOval(px + ox - 2, pyb + oy - 2, 4, 4);
         }
-        g.setColor(new Color(0x111827));
-        g.setStroke(new BasicStroke(1f));
-        g.drawRect(ox, oy, ancho, alto);
 
         if (etiqueta != null && !etiqueta.isEmpty()) {
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
@@ -546,7 +634,7 @@ public class CanchaPanel extends JPanel {
         }
     }
 
-    private static double rebote(double t) {   // easeOutBack: entra pasándose un poco y se acomoda
+    private static double rebote(double t) {   
         double c1 = 1.70158, c3 = c1 + 1;
         return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
     }
@@ -567,7 +655,7 @@ public class CanchaPanel extends JPanel {
 
         int size = Math.max(28, fh / 7);
         FontMetrics fm;
-        do {   // achica la letra si el texto no entra
+        do {   
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
             fm = g.getFontMetrics();
             size -= 2;

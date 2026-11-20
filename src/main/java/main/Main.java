@@ -53,7 +53,6 @@ public class Main {
         SwingUtilities.invokeLater(() -> new VentanaPrincipal(service, estado).setVisible(true));
     }
 
-    // Si MySQL responde y tiene clubes cargados se usa si no, se juega con datos en memoria.
     private static boolean hayBaseDeDatos() {
         try {
             DriverManager.setLoginTimeout(3);

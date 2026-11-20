@@ -7,6 +7,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
+import arcade.Formacion;
 import arcade.Partido;
 import arcade.Torneo;
 import model.Onceideal;
@@ -25,6 +26,7 @@ public class VentanaPrincipal extends JFrame {
 
     private String nombreDT = "DT";
     private Onceideal onceActual;
+    private Formacion formacionActual = Formacion.TODAS.get(0);
     private Torneo torneo;
 
     public VentanaPrincipal(Juegoservice service, String estadoDatos) {
@@ -62,8 +64,9 @@ public class VentanaPrincipal extends JFrame {
     }
 
     /** Arranca una eliminatoria nueva (3 rivales de la BDD) con este 11. */
-    public void irAPartido(Onceideal once) {
+    public void irAPartido(Onceideal once, Formacion formacion) {
         onceActual = once;
+        formacionActual = formacion;
         try {
             torneo = service.crearTorneo();
         } catch (Exception ex) {
@@ -75,7 +78,7 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void jugarFase() {
-        partido.iniciar(nombreDT, onceActual, torneo);
+        partido.iniciar(nombreDT, onceActual, torneo, formacionActual);
         cards.show(root, "partido");
     }
 
@@ -85,7 +88,7 @@ public class VentanaPrincipal extends JFrame {
 
     /** Nueva eliminatoria con el mismo 11. */
     public void revancha() {
-        irAPartido(onceActual);
+        irAPartido(onceActual, formacionActual);
     }
 
     public void irAFinal(Partido p) {

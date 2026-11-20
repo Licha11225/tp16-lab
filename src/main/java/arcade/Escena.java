@@ -32,6 +32,16 @@ public class Escena {
     public boolean arqueroPropio;
     public int arqueroLado;
 
+   
+    public boolean patada, libre;
+    public boolean rival;                   
+    public double apuntadoX, apuntadoY;     
+    public double tiroX, tiroY;            
+    public double arqX, arqY;              
+    public double potencia;
+    public int muro = -1;                   
+    public String tiradorNombre = "", arqueroNombre = "";
+
     public Escena(double x0, double y0) {
         this.x0 = x0;
         this.y0 = y0;
@@ -51,6 +61,23 @@ public class Escena {
         this.hayArquero = true;
         this.arqueroPropio = propio;
         this.arqueroLado = lado;
+        return this;
+    }
+
+    public Escena patada(boolean libre, String tirador, String arquero, double apuntadoX, double apuntadoY,
+                         double tiroX, double tiroY, double arqX, double arqY, double potencia, int muro) {
+        this.patada = true;
+        this.libre = libre;
+        this.tiradorNombre = tirador;
+        this.arqueroNombre = arquero;
+        this.apuntadoX = apuntadoX;
+        this.apuntadoY = apuntadoY;
+        this.tiroX = tiroX;
+        this.tiroY = tiroY;
+        this.arqX = arqX;
+        this.arqY = arqY;
+        this.potencia = potencia;
+        this.muro = muro;
         return this;
     }
 
